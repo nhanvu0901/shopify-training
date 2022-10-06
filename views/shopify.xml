@@ -1,0 +1,42 @@
+<odoo>
+  <data>
+    <!-- explicit list view definition -->
+
+    <record model="ir.ui.view" id="test_shopi.list">
+      <field name="name">test_shopi list</field>
+      <field name="model">test_shopify</field>
+      <field name="arch" type="xml">
+        <tree>
+             <field name="email"/>
+             <field name="access_token"/>
+             <field name="domain"/>
+             <field name="currency"/>
+             <field name="country_name"/>
+             <field name="email"/>
+             <field name="shop_name"/>
+        </tree>
+      </field>
+    </record>
+
+
+    <!-- actions opening views on models -->
+
+    <record model="ir.actions.act_window" id="test_shopi.action_window">
+      <field name="name">Shopify</field>
+      <field name="res_model">test_shopify</field>
+      <field name="view_mode">tree,form</field>
+    </record>
+
+
+
+
+
+    <!-- Top menu item -->
+
+    <menuitem name="Shopify" id="test_shopi.menu_root"  action="test_shopi.action_window"/>
+
+
+
+
+  </data>
+</odoo>
