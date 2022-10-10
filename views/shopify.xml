@@ -4,7 +4,7 @@
 
     <record model="ir.ui.view" id="test_shopi.list">
       <field name="name">test_shopi list</field>
-      <field name="model">test_shopify</field>
+      <field name="model">s.sp.shop</field>
       <field name="arch" type="xml">
         <tree>
              <field name="email"/>
@@ -23,7 +23,7 @@
 
     <record model="ir.actions.act_window" id="test_shopi.action_window">
       <field name="name">Shopify</field>
-      <field name="res_model">test_shopify</field>
+      <field name="res_model">s.sp.shop</field>
       <field name="view_mode">tree,form</field>
     </record>
 
