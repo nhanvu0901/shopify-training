@@ -1,0 +1,41 @@
+<odoo>
+  <data>
+    <!-- explicit list view definition -->
+
+    <record model="ir.ui.view" id="shopify_app">
+      <field name="name">Shopify app</field>
+      <field name="model">s.app</field>
+      <field name="arch" type="xml">
+        <tree>
+             <field name="shop_url"/>
+             <field name="sp_api_key"/>
+             <field name="sp_api_secret_key"/>
+             <field name="sp_api_version"/>
+             <field name="sp_access_token"/>
+             <field name="cdn_tag"/>
+        </tree>
+      </field>
+    </record>
+
+
+    <!-- actions opening views on models -->
+
+    <record model="ir.actions.act_window" id="shopify_app">
+      <field name="name">Shopify</field>
+      <field name="res_model">s.app</field>
+      <field name="view_mode">tree,form</field>
+    </record>
+
+
+
+
+
+    <!-- Top menu item -->
+
+    <menuitem name="Shopify App" id="menu_shopify_app" parent="menu_root"  action="shopify_app"/>
+
+
+
+
+  </data>
+</odoo>

@@ -1,0 +1,31 @@
+<odoo>
+  <data>
+    <!-- explicit list view definition -->
+
+    <record model="ir.ui.view" id="shop_app">
+      <field name="name">Shop App</field>
+      <field name="model">s.sp.app</field>
+      <field name="arch" type="xml">
+        <tree>
+             <field name="sp_shop_id"/>
+             <field name="s_app_id"/>
+             <field name="token"/>
+        </tree>
+      </field>
+    </record>
+
+
+    <!-- actions opening views on models -->
+
+    <record model="ir.actions.act_window" id="shop_app">
+      <field name="name">Shop App view</field>
+      <field name="res_model">s.sp.app</field>
+      <field name="view_mode">tree,form</field>
+    </record>
+
+
+    <!-- Top menu item -->
+
+    <menuitem name="Shop App" id="menu_shop_app" parent="menu_root"  action="shop_app"/>
+  </data>
+</odoo>

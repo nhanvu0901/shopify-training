@@ -31,7 +31,12 @@
     # always loaded
     'data': [
         'security/ir.model.access.csv',
-        'views/shopify.xml',
+        'data/sp_shop.xml',
+        'views/shopify_shop.xml',
+        'views/shopify_app.xml',
+        'views/shop_app.xml',
+        'views/res_config_settings_views.xml'
+
 
     ],
     # only loaded in demonstration mode

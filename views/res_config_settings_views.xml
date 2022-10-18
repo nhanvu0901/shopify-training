@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="res_config_settings_view_form" model="ir.ui.view">
+            <field name="name">res.config.settings.view.form.inherit.shopify</field>
+            <field name="model">res.config.settings</field>
+            <field name="priority" eval="90"/>
+            <field name="inherit_id" ref="base.res_config_settings_view_form"/>
+            <field name="arch" type="xml">
+                <xpath expr="//div[hasclass('settings')]" position="inside">
+                    <div class="app_settings_block" data-string="Shopify" id="shopify" string="Shopify" data-key="test_shopi" >
+                        <h2>Shopify Management</h2>
+                        <div class="row mt16 o_settings_container" id="shopify_setting">
+                            <div class="col-12 col-lg-6 o_setting_box">
+
+                                    <span class="o_form_label">Shopify authentication</span>
+
+
+                                    <div >
+                                        <span>Shop URL </span>
+                                        <field name="shop_url"/>
+
+                                    </div>
+
+                                    <div >
+                                        <span>Api version</span>
+                                        <field name="api_version" />
+
+                                    </div>
+                                    <div >
+                                        <span>Redirect URL</span>
+                                        <field name="redirect_url"/>
+
+                                    </div>
+                                    <div >
+                                        <span>API Key</span>
+                                        <field name="sp_api_key"  />
+
+                                    </div>
+                                    <div >
+                                        <span>API secret key</span>
+                                        <field name="sp_api_secret_key"  />
+
+                                    </div>
+                                    <div >
+                                        <span>CDN tag</span>
+                                        <field name="cdn_tag" />
+                                    </div>
+                            </div>
+                        </div>
+                    </div>
+                </xpath>
+            </field>
+        </record>
+
+        <record id="shopify_config_settings_action" model="ir.actions.act_window">
+            <field name="name">Settings</field>
+            <field name="type">ir.actions.act_window</field>
+            <field name="res_model">res.config.settings</field>
+            <field name="view_mode">form</field>
+            <field name="target">inline</field>
+            <field name="context">{'module' : 'test_shopi', 'bin_size': False}</field>
+        </record>
+
+        <menuitem id="shopify_config_settings_menu" name="Settings"
+             parent="menu_root" sequence="0" action="shopify_config_settings_action"
+           />
+    </data>
+</odoo>
