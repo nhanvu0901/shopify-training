@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="shopi_fetch_order" model='ir.actions.act_window'>
+                <field name="name">Fetch Order</field>
+                <field name="res_model">fetch.orders</field>
+                <field name="view_mode">form</field>
+    </record>
+
+    <record id="shopify_fetch_order_product" model="ir.ui.view">
+        <field name="name">Fetch product form</field>
+        <field name="model">fetch.orders</field> <!--create view for the library.book-->
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                   <span style="font-size:10px;font-weight:400">Fetch Product</span>
+                    <group>
+
+                        <group><field name="min_time"/></group>
+                        <group><field name="max_time"/></group>
+                    </group>
+                     <header>
+                           <button name="shopify_fetch_product" string="Fetch Product" type="object" class="oe_highlight"/>
+                    </header>
+
+
+                    <span style="font-size:10px;font-weight:400">Fetch Order</span>
+                    <group>
+
+                        <group><field name="min_time_order"/></group>
+                        <group><field name="max_time_order"/></group>
+                    </group>
+                     <header>
+                           <button name="shopify_fetch_order" string="Fetch Order" type="object" class="oe_highlight"/>
+                    </header>
+
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+
+
+   <menuitem name ="Shopify feature" sequence="0" id="shopify_menu" parent="menu_root"/>
+    <menuitem name="Time range" id="shopify_fetch_order" parent="shopify_menu" action="shopi_fetch_order"/>
+
+</odoo>

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+
+    <record id="shopi_fetch_product_order" model='ir.actions.act_window'>
+                <field name="name">Fetch Product</field>
+                <field name="res_model">shop.product</field>
+                <field name="view_mode">tree,form</field>
+    </record>
+
+
+     <!-- Tree(list) View -->
+        <record id="fetch_order_product_view_tree" model="ir.ui.view">
+            <field name="name">Fetch Product</field>
+            <field name="model">shop.product</field>
+            <field name="arch" type="xml">
+                <tree>
+                        <field name="created_at"/>
+                        <field name="product_id"/>
+                        <field name="title"/>
+                        <field name="product_price"/>
+                        <field name="store_name"/>
+                </tree>
+            </field>
+        </record>
+
+
+
+    <menuitem name="Shopify fetch product" id="shopi_fetch_product" parent="shopify_menu" action="shopi_fetch_product_order"/>
+
+</odoo>
