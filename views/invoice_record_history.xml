@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+
+    <record id="invoice_history_record_action" model='ir.actions.act_window'>
+                <field name="name">Invoice History Record action</field>
+                <field name="res_model">invoice.history.record</field>
+                <field name="view_mode">tree,form</field>
+    </record>
+
+
+     <!-- Tree(list) View -->
+        <record id="invoice_history_record_tree" model="ir.ui.view">
+            <field name="name">Invoice History Record Tree</field>
+            <field name="model">invoice.history.record</field>
+            <field name="arch" type="xml">
+                <tree>
+                        <field name="changes"/>
+                        <field name="date_update"/>
+                        <field name="Details"/>
+                        <field name="record_id"/>
+                        <field name="customer_name"/>
+                </tree>
+            </field>
+        </record>
+ <menuitem name="Invoice History Record Tree Menu" id="invoice_history_record_menu" parent="xero_main"  action="invoice_history_record_action"/>
+
+</odoo>

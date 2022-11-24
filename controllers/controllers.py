@@ -5,7 +5,7 @@ from base64 import b64encode
 import requests
 import shopify
 import werkzeug.utils
-
+import xmltodict
 from odoo.http import request
 
 from odoo import http
@@ -54,8 +54,6 @@ class TestShopi(http.Controller):
         api_version = request.env['ir.config_parameter'].sudo().get_param('test_shopi.api_version')
         shop_url = request.env['ir.config_parameter'].sudo().get_param('test_shopi.shop_url')
 
-
-
         # session = shopify.Session(shop_url, api_version)
         # access_token = session.request_token(request.params)
         # print(access_token)
@@ -98,17 +96,18 @@ class TestShopi(http.Controller):
         shopify_store = request.env['s.sp.shop']
 
         shopify_store_exist = request.env['s.sp.shop'].sudo().search([('domain', '=', shop_url)], limit=1)
-
+        current_user = request.env['res.users'].sudo().search([('login', '=', kw['shop'])],
+                                                              limit=1)
         if shopify_store_exist:
             shopify_store_exist.write(
                 {
-
                     "shop_name": shop.name,
                     "domain": domain,
                     "currency": currency,
                     "country_name": country_name,
                     "email": email,
-                    "shop_id": shop.id
+                    "shop_id": shop.id,
+                    "user": current_user
                 }
             )
 
@@ -119,6 +118,7 @@ class TestShopi(http.Controller):
                 "currency": currency,
                 "country_name": country_name,
                 "email": email,
+                "user": current_user,
                 "shop_id": shop.id
             })
 
@@ -146,7 +146,6 @@ class TestShopi(http.Controller):
         current_user = request.env['res.users'].sudo().search([('login', '=', kw['shop'])],
                                                               limit=1)
         if not current_user:
-
             current_company = request.env['res.company'].sudo().search([('name', '=', kw['shop'])], limit=1)
             if not current_company:
                 currency_id = request.env['res.currency'].sudo().search(
@@ -164,17 +163,15 @@ class TestShopi(http.Controller):
                 'company_id': current_company.id,
                 'company_ids': [(6, 0, [current_company.id])],
             })
+
         web_base_url = request.env['ir.config_parameter'].sudo().get_param('web.base.url')
 
         redirectUrl = web_base_url + '/web?#menu_id=' + str(
-            request.env.ref('test_shopi.shopify_config_settings_menu').id) # id of the menuitem
+            request.env.ref('test_shopi.shopify_config_settings_menu').id)  # id of the menuitem
 
         return werkzeug.utils.redirect(redirectUrl)
 
-
-
-
-    @http.route('/xero/authenticate/', auth='public')
+    @http.route('/xero/authenticate/', auth='public', website=True, method=['GET'], csrf=False)
     def xero_authenticate(self, **kwargs):
         print(kwargs)
         if 'code' in kwargs:
@@ -193,24 +190,120 @@ class TestShopi(http.Controller):
             data = {
                 "grant_type": "authorization_code",
                 "code": code,
-                "redirect_uri": web_base_url + "/xero/authenticate/"
+                "redirect_uri": web_base_url + "/xero/authenticate/",
             }
             responce = requests.post(endpoint, headers=header, data=data)
 
             if responce.ok:
                 data = responce.json()
-                print(data)
 
             vals = {}
+            valXeroModel = {}
+            shopify_store_exist = request.env['s.sp.shop'].sudo().search([('domain', '=', state)], limit=1)
             if 'access_token' in data:
                 vals['xero_access_token'] = data['access_token']
+                valXeroModel['xero_access_token'] = data['access_token']
+
+                enpointConect = 'https://api.xero.com/connections'
+
+                header = {
+                    "Authorization": "Bearer " + data['access_token'],
+                    "Content-Type": "application/json"
+                }
+                response = requests.get(enpointConect, headers=header)
+
+                valXeroModel["tenantId"] = response.json()[0]['tenantId']
+                valXeroModel["id_xero_account"] = response.json()[0]['id']
+                if shopify_store_exist:
+                    valXeroModel["shop_shopify"] = shopify_store_exist.id
+                    valXeroModel["shopify_shop_url"] = shopify_store_exist.domain
+
+                # get the contact id
+                endpointAcount = "https://api.xero.com/api.xro/2.0/Contacts"
+                headerAccount = {
+                    "Authorization": "Bearer " + data['access_token'],
+                    "Content-Type": "application/json",
+                    "Xero-tenant-id": response.json()[0]['tenantId']
+                }
+                responseAccount = requests.get(endpointAcount, headers=headerAccount)
+                if responseAccount.ok:
+                    accountXML = responseAccount.text
+                    obj = xmltodict.parse(accountXML)
+                    json_string = json.dumps(obj)
+                    valXeroModel['contact_id'] = json.loads(json_string).get('Response').get("Contacts").get(
+                        "Contact").get("ContactID")
+                xero_model_exist = request.env['xero.model'].sudo().search(
+                    [('id_xero_account', '=', response.json()[0]['id'])],
+                    limit=1)
+                if xero_model_exist:
+                    xero_model_exist.write(valXeroModel)
+                else:
+                    xero_model_exist.create(valXeroModel)
+
             if 'refresh_token' in data:
                 vals['xero_refresh_token'] = data['refresh_token']
-            shopify_store_exist = request.env['s.sp.shop'].sudo().search([('domain', '=', state)], limit=1)
+
+
+
             if shopify_store_exist:
                 shopify_store_exist.write(vals)
+            else:
+                shopify_store_exist.create(vals)
+
+
 
             redirectUrl = web_base_url + '/web?#menu_id=' + str(
                 request.env.ref('test_shopi.shopify_config_settings_menu').id)  # id of the menuitem
 
             return werkzeug.utils.redirect(redirectUrl)
+
+    @http.route('/getdata',type='json', auth='none', cors='*', csrf=False, save_session=False)
+    def get_store_front_end_data(self, **kwargs):
+        if request.jsonrequest:
+            product_id = request.jsonrequest.get('product_id')
+            product_handle = request.jsonrequest.get('product_handle')
+            discount_combo = request.env['shopify.discount'].sudo().search([])
+
+            combo_product =[]
+            for combo in discount_combo:
+                for product in combo.products:
+                    if(product.product_id == str(product_id)):
+                        combo_product.append(combo)
+
+            list_combo=[]
+            for combo in combo_product:
+               list_product=[]
+               for product in combo.products:
+                   item ={
+                       "product_id":product.product_id,
+                       "product_name":product.product_name,
+                       "product_handle":product.product_handle,
+                       "quantity":product.qty,
+                       "product_price":product.product_price,
+                       "image_url":product.image_url
+                   }
+                   list_product.append(item)
+               print(list_product)
+               if(combo.discount_type == 'per'):
+                   combo_data={
+                       "discount_amount":str(combo.discount_amount)+"%",
+                       "products":list_product,
+                   }
+                   list_combo.append(combo_data)
+               else:
+                   combo_data={
+                       "discount_amount": str(combo.discount_amount),
+                       "products": list_product,
+                   }
+                   list_combo.append(combo_data)
+
+            return json.dumps(list_combo)
+
+
+
+
+
+
+
+
+

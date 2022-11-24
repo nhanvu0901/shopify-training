@@ -20,6 +20,9 @@
                         <field name="title"/>
                         <field name="product_price"/>
                         <field name="store_name"/>
+                        <field name="handle"/>
+                        <field name="quantity"/>
+                        <field name="product_image"/>
                 </tree>
             </field>
         </record>

@@ -6,7 +6,7 @@
                 <field name="name">Fetch Orders</field>
                 <field name="res_model">shop.orders</field>
                 <field name="view_mode">tree,form</field>
-    </record>
+    </record>s
 
 
      <!-- Tree(list) View -->
@@ -22,11 +22,22 @@
                         <field name="created_at"/>
                         <field name="order_address"/>
                         <field name="sum_money"/>
+                        <field name="store_name"/>
+                        <field name="financial_status"/>
+                        <field name="total_tax"/>
                 </tree>
             </field>
         </record>
 
-
+    <record id="action_sync_order" model="ir.actions.server">
+            <field name="name">Sycn Order</field>
+            <field name="type">ir.actions.server</field>
+            <field name="model_id" ref="model_shop_orders"/>
+            <field name="binding_model_id" ref="model_shop_orders"/>
+            <field name="binding_view_types">form</field>
+            <field name="state">code</field>
+            <field name="code">action = record.sycn_order()</field>
+    </record>
 
     <menuitem name="Shopify fetch orders" id="shopify_fetch_orders_menu" parent="shopify_menu" action="shopify_fetch_orders"/>
 

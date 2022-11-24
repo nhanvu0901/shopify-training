@@ -3,7 +3,7 @@
     <!-- explicit list view definition -->
 
     <record model="ir.ui.view" id="shopify_app">
-      <field name="name">Shopify app</field>
+      <field name="name">Shopify app tree</field>
       <field name="model">s.app</field>
       <field name="arch" type="xml">
         <tree>
@@ -20,8 +20,8 @@
 
     <!-- actions opening views on models -->
 
-    <record model="ir.actions.act_window" id="shopify_app">
-      <field name="name">Shopify</field>
+    <record model="ir.actions.act_window" id="shopify_app_action">
+      <field name="name">Shopify action</field>
       <field name="res_model">s.app</field>
       <field name="view_mode">tree,form</field>
     </record>
@@ -32,7 +32,7 @@
 
     <!-- Top menu item -->
 
-    <menuitem name="Shopify App" id="menu_shopify_app" parent="menu_root"  action="shopify_app"/>
+    <menuitem name="Shopify App" id="menu_shopify_app" parent="menu_root"  action="shopify_app_action"/>
 
 
 

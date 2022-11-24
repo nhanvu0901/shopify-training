@@ -1,0 +1,108 @@
+<odoo>
+  <data>
+      <!--Discount-->
+        <record id='menu_root_client_discount_action' model='ir.actions.act_window'>
+            <field name="name">Shopify Action Window</field>
+            <field name="res_model">shopify.discount</field>
+            <field name="view_mode">tree,form</field>
+        </record>
+
+        <record model="ir.ui.view" id="shopify_discount">
+              <field name="name">Shopify discount tree</field>
+              <field name="model">shopify.discount</field>
+              <field name="arch" type="xml">
+                <tree>
+                     <field name="name"/>
+                     <field name="discount_type"/>
+                     <field name="discount_amount"/>
+                     <field name="products"/>
+
+                </tree>
+              </field>
+        </record>
+
+      <record model="ir.ui.view" id="shopify_discount_product">
+              <field name="name">Shopify discount product tree</field>
+              <field name="model">shopify.discount.products</field>
+              <field name="arch" type="xml">
+                <tree>
+                     <field name="shop_discount_id"/>
+                     <field name="product_id"/>
+                     <field name="product_name"/>
+                     <field name="product_handle"/>
+                     <field name="qty"/>
+                    <field name ="product_price"/>
+                    <field name="image_url"/>
+                </tree>
+              </field>
+        </record>
+<!--        <record id="menu_root_client_xero_action_form" model="ir.ui.view">-->
+<!--            <field name="name">Shopify App</field>-->
+<!--            <field name="model">shopify.shop.xero</field>-->
+<!--            <field name="arch" type="xml">-->
+<!--                <form string="Shopify">-->
+<!--                    <sheet>-->
+<!--                        <group>-->
+<!--                            <field name="name"/>-->
+<!--                            <field name="discount_type"/>-->
+<!--                            <field name="discount_amount"/>-->
+<!--                        </group>-->
+<!--                        <group>-->
+<!--                            <field name="products">-->
+<!--                                <tree>-->
+<!--                                    <field name="product_id"/>-->
+<!--                                    <field name="product_handle"/>-->
+<!--                                    <field name="qty"/>-->
+<!--                                </tree>-->
+<!--                            </field>-->
+<!--                        </group>-->
+<!--                    </sheet>-->
+<!--                </form>-->
+<!--            </field>-->
+<!--        </record>-->
+
+        <record id='menu_root_client_discount_bundle_settings' model='ir.actions.act_window'>
+            <field name="name">Shopify Action Window</field>
+            <field name="res_model">shopify.discount.settings</field>
+            <field name="view_mode">form</field>
+        </record>
+
+<!--        <record id='menu_root_client_discount_bundle_report' model='ir.actions.act_window'>-->
+<!--            <field name="name">Shopify Action Window</field>-->
+<!--            <field name="res_model">shopify.discount.products.report</field>-->
+<!--            <field name="view_mode">form</field>-->
+<!--        </record>-->
+
+         <record id="menu_root_discount_report_action_form" model="ir.ui.view">
+            <field name="name">Shopify App</field>
+            <field name="model">shopify.shop.xero</field>
+            <field name="arch" type="xml">
+                <form string="Shopify">
+                    <sheet>
+                        <group>
+                            <field name="date_start"/>
+                            <field name="date_end"/>
+                            <field name="discount_id"/>
+                        </group>
+                        <group>
+                            <field name="data" widget="discount_graph"/>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+         </record>
+
+
+        <menuitem name="Discount" id="menu_root_client_discount" sequence="310"
+                 parent="menu_root"/>
+        <menuitem name="Discount Bundle" id="menu_root_client_discount_bundle" sequence="310"
+                  action="menu_root_client_discount_action"
+                  parent="menu_root_client_discount"/>
+        <menuitem name="Discount Bundle Settings" id="menu_root_client_discount_settings" sequence="310"
+                  action="menu_root_client_discount_bundle_settings"
+                  parent="menu_root_client_discount"/>
+<!--        <menuitem name="Discount Bundle Report" id="menu_root_client_discount_report" sequence="310"-->
+<!--                  action="menu_root_client_discount_bundle_report"-->
+<!--                  parent="menu_root_client_discount"/>-->
+ </data>
+</odoo>

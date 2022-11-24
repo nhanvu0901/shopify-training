@@ -4,7 +4,7 @@ import shopify
 
 from odoo import fields, models, api
 
-
+import time
 class ResConfigSettings(models.TransientModel):
     _inherit = 'res.config.settings'
 
@@ -20,3 +20,24 @@ class ResConfigSettings(models.TransientModel):
     client_id = fields.Char(string="Client ID",config_parameter="test_shopi.client_id")
     client_secret = fields.Char(string="Client Secret",config_parameter="test_shopi.client_secret")
     redirect_url_xero = fields.Char(string="Redirect URL",config_parameter="test_shopi.redirect_url_xero")
+
+
+    def add_script_tag_to_shop(self):
+        src = self.cdn_tag
+        shop_url = self.shop_url
+        version = self.api_version
+
+        new_session = shopify.Session(shop_url, version,
+                                      token='shpua_f29fc106d85a039d1d3e44a4405ce179')
+        shopify.ShopifyResource.activate_session(new_session)
+
+        scripTag = shopify.ScriptTag.find()
+        for script in scripTag:
+            if "Test.js" in script.src:
+                script.destroy()
+        if src:
+            scripTagCreate = shopify.ScriptTag.create({
+                "event": "onload",
+                "src": src + "?v=" + str(time.time())
+            })
+            return scripTagCreate.id

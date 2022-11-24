@@ -46,6 +46,9 @@
                                         <span>CDN tag</span>
                                         <field name="cdn_tag" />
                                     </div>
+                                <div >
+                                   <button name="add_script_tag_to_shop" string="Update" type="object" class="oe_highlight"/>
+                                </div>
                                 <h1>Xero configuration</h1>
                                  <div >
                                         <span>Client ID</span>
@@ -59,6 +62,8 @@
                                         <span>Redirect URL</span>
                                         <field name="redirect_url_xero" />
                                     </div>
+
+
                             </div>
                         </div>
                     </div>

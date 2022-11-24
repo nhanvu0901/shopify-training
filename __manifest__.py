@@ -37,7 +37,13 @@
         'views/fetch_orders.xml',
         'views/shop_product.xml',
         'views/shop_orders.xml',
-        'views/xero_redirect.xml'
+        'views/xero_redirect.xml',
+
+        'views/xero_store.xml',
+        'views/xero_model.xml',
+        'views/table_history.xml',
+        'views/invoice_record_history.xml',
+        'views/shopify_discount.xml'
 
     ],
     # only loaded in demonstration mode

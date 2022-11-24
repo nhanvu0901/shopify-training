@@ -10,6 +10,6 @@
                 </field>
     </record>
 
-   <menuitem name="Xero Redirect" id="xero_redirect"  parent="menu_root" action="xero_redirect_url"/>
-
+   <menuitem name="Xero Acounting" id="xero_main"  parent="menu_root"/>
+        <menuitem name="Xero Redirect" id="xero_redirect"  parent="xero_main" action="xero_redirect_url"/>
 </odoo>

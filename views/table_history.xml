@@ -1,0 +1,37 @@
+<odoo>
+  <data>
+    <!-- explicit list view definition -->
+
+
+  <!-- actions opening views on models -->
+
+    <record model="ir.actions.act_window" id="table_sync_history_action">
+      <field name="name">table history sync action</field>
+      <field name="res_model">table.sync.history</field>
+      <field name="view_mode">tree,form</field>
+    </record>
+
+
+
+      <record id="table_sync_history_tree" model="ir.ui.view">
+            <field name="name">table history tree</field>
+            <field name="model">table.sync.history</field>
+            <field name="arch" type="xml">
+                <tree>
+                        <field name="invoice_id"/>
+                        <field name="order_id"/>
+                        <field name="total_money"/>
+                        <field name="order_name"/>
+                        <field name="list_history"/>
+
+                </tree>
+            </field>
+        </record>
+
+
+
+ <menuitem name="Histoty Sync Order" id="table_sync_history_record" parent="xero_main" action="table_sync_history_action"/>
+
+
+  </data>
+</odoo>

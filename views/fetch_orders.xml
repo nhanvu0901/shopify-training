@@ -7,7 +7,7 @@
     </record>
 
     <record id="shopify_fetch_order_product" model="ir.ui.view">
-        <field name="name">Fetch product form</field>
+        <field name="name">Fetch Order form</field>
         <field name="model">fetch.orders</field> <!--create view for the library.book-->
         <field name="arch" type="xml">
             <form>

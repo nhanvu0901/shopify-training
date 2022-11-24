@@ -1,0 +1,42 @@
+<odoo>
+  <data>
+    <!-- explicit list view definition -->
+
+    <record model="ir.ui.view" id="xero_model">
+      <field name="name">Xero model</field>
+      <field name="model">xero.model</field>
+      <field name="arch" type="xml">
+
+        <tree>
+            <field name="id_xero_account"/>
+             <field name="tenantId"/>
+             <field name="shop_shopify"/>
+
+             <field name="contact_id"/>
+             <field name="xero_access_token"/>
+              <field name="shopify_shop_url"/>
+        </tree>
+      </field>
+    </record>
+
+
+    <!-- actions opening views on models -->
+
+    <record model="ir.actions.act_window" id="xero_model">
+      <field name="name">Xero model</field>
+      <field name="res_model">xero.model</field>
+      <field name="view_mode">tree,form</field>
+    </record>
+
+
+
+
+
+    <!-- Top menu item -->
+      <menuitem name="Xero model" id="menu_xero_model" parent="xero_main"  action="xero_model"/>
+
+
+
+
+  </data>
+</odoo>

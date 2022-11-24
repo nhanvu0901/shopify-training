@@ -28,7 +28,7 @@ class SApp(models.Model):
 class Shopify(models.Model):
     _name = 's.sp.shop'
     _description = 'test_shopi.test_shopi'
-    _rec_name = 'shop_name'
+    _rec_name = 'domain'
 
     email = fields.Char(string="Email")
 
@@ -39,7 +39,9 @@ class Shopify(models.Model):
     shop_id = fields.Char(string="Shop ID")
     user = fields.Many2one('res.users', "User")
     xero_access_token = fields.Char(string="Xero access token")
-    xero_refresh_token = fields.Char(string="Xero access token")
+    xero_refresh_token = fields.Char(string="Xero refresh token")
+    contact_id = fields.Char(string="Contact ID")
+
 
 class SSpApp(models.Model):
     _name = 's.sp.app'  # shop app
