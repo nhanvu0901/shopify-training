@@ -243,8 +243,6 @@ class TestShopi(http.Controller):
             if 'refresh_token' in data:
                 vals['xero_refresh_token'] = data['refresh_token']
 
-
-
             if shopify_store_exist:
                 shopify_store_exist.write(vals)
             else:
@@ -316,27 +314,34 @@ class TestShopi(http.Controller):
 
 
 
-
-    @http.route('/shopify/cart',type='json', auth='none', cors='*', csrf=False, save_session=False)
-    def add_store_front_end_combo(self, **kwargs):#add to cart
+    def compare_combo(self,request):
         discount_combo = request.env['shopify.discount'].sudo().search([])
 
         if request.jsonrequest:
-            currency =request.jsonrequest.get('currency')
-            item_list =request.jsonrequest.get("items")
+
+            item_list = request.jsonrequest.get("items")
 
             flag = None
             for combo in discount_combo:
-                if(len(combo.products) == len(item_list)):
-                    count =0
+                if (len(combo.products) == len(item_list)):
+                    count = 0
                     for product in combo.products:
                         for item in item_list:
                             # product_exist = request.env['shopify.discount'].sudo().search(['&', ('combo.products.product_id', '=', item.get('product_id')), (combo.products.qty, '=', item.get('quantity'))],limit=1)
-                            if product.product_id == str(item.get('product_id')) and product.qty ==item.get('quantity'):
-                            # if product_exist:
-                               count+=1
+                            if product.product_id == str(item.get('product_id')) and product.qty == item.get(
+                                    'quantity'):
+                                # if product_exist:
+                                count += 1
 
-                        if count == len(item_list):flag= combo
+                        if count == len(item_list):
+                            flag = combo
+                            return flag;
+    @http.route('/shopify/cart',type='json', auth='none', cors='*', csrf=False, save_session=False)
+    def add_store_front_end_combo(self, **kwargs):#add to cart
+
+        if request.jsonrequest:
+            currency =request.jsonrequest.get('currency')
+            flag = self.compare_combo(request)
             if flag:
                 list_product = []
                 for product in flag.products:
@@ -418,7 +423,16 @@ class TestShopi(http.Controller):
 
 
 
+    @http.route('/shopify/addtocart',type='json', auth='none', cors='*', csrf=False, save_session=False)
+    def shopify_add_to_cart(self, **kwargs):
+        if request.jsonrequest:
+            flag = self.compare_combo(request)
+            if flag:
+                flag.write({
+                    "number_add_to_cart":flag.number_add_to_cart +1
+                })
 
+        return json.dumps("hello")
 
 
 

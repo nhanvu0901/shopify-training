@@ -17,6 +17,7 @@
                      <field name="discount_amount"/>
                      <field name="products"/>
                      <field name="store_name"/>
+                     <field name="number_add_to_cart"/>
                 </tree>
               </field>
         </record>

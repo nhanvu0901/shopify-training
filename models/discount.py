@@ -13,6 +13,7 @@ class SAppDiscount(models.Model):
     products = fields.One2many('shopify.discount.products', 'shop_discount_id')
     shopify_shop =fields.Many2one('s.sp.shop')
     store_name = fields.Char(string='Store name',related='shopify_shop.domain')
+    number_add_to_cart = fields.Integer(string='Total number add to cart')
 
 
 

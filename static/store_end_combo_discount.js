@@ -11,6 +11,42 @@ initJQuery(function () {
 
 
         if (window.ShopifyAnalytics.meta.page.pageType === "product") {
+            //bai 8 cau i
+           function exchange_data(){
+               var xmlhttp = new XMLHttpRequest();
+                xmlhttp.timeout = 300;
+               xmlhttp.open("GET", "https://shoplify-odoo.myshopify.com/cart.json");
+               xmlhttp.setRequestHeader("Content-Type", "application/json");
+                xmlhttp.onreadystatechange = function () {
+
+                   if (xmlhttp.readyState === 4) {
+                       if (xmlhttp.status === 200) {
+                           console.log(xmlhttp.responseText);
+                            var xhr = new XMLHttpRequest();
+                           xhr.open("POST", "https://odoo.website/shopify/addtocart");
+                           // xhr.timeout=2000
+                           xhr.setRequestHeader("Content-Type", "application/json");
+                           xhr.onreadystatechange = function () {
+                               if (xhr.readyState === 4) {
+                                   if (xhr.status === 200) {
+                                       console.log(xhr.responseText);
+                                   }
+                               }
+                           };
+                           xhr.send(xmlhttp.responseText)
+                       }
+                   }
+               };
+               xmlhttp.send()
+
+           }
+
+            $( ".product-form__submit" ).on( "click",  function(){
+                setTimeout(exchange_data,5000)
+
+             });
+
+
             var currency='';
 
 
