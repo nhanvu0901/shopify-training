@@ -81,7 +81,7 @@ class Fetch_order(models.Model):
                 })
 
     def shopify_fetch_product(self):
-        global varient_price
+        global varient_price,varient_quantity,varient_id,product_image
         min = datetime.strftime(self.min_time, "%Y-%m-%d")
         max = datetime.strftime(self.max_time, "%Y-%m-%d")
         shop_url = request.env['ir.config_parameter'].sudo().get_param('test_shopi.shop_url')
@@ -93,9 +93,11 @@ class Fetch_order(models.Model):
                 product_exist = request.env['shop.product'].sudo().search([('product_id', '=', data.get_id())], limit=1)
                 varient = shopify.Product.find(data.get_id()).variants
                 images = shopify.Product.find(data.get_id()).images
+
                 for i in varient:
                     varient_price = i.price
                     varient_quantity = i.inventory_quantity
+                    varient_id = i.id
                 for i in  images:
                     product_image = i.src
                 if product_exist:
@@ -107,7 +109,8 @@ class Fetch_order(models.Model):
                         "store_name": shop_url,
                         "handle":'https://'+shop_url+'/products/'+ shopify.Product.find(data.get_id()).handle,
                         "quantity":varient_quantity,
-                        "product_image":product_image
+                        "product_image":product_image,
+                        "varient_id":varient_id
                     })
                 else:
                     request.env['shop.product'].sudo().create({
@@ -118,7 +121,8 @@ class Fetch_order(models.Model):
                         "store_name": shop_url,
                          "handle":'https://'+shop_url+'/products/'+ shopify.Product.find(data.get_id()).handle,
                         "quantity":varient_quantity,
-                        "product_image": product_image
+                        "product_image": product_image,
+                        "varient_id": varient_id
                     })
 
 
@@ -134,6 +138,7 @@ class ShopOrderProduct(models.Model):
     handle = fields.Char("Product URL")
     quantity = fields.Char("Quantity")
     product_image = fields.Char("Image url")
+    varient_id = fields.Char("Varient_id")
 
 
 class ShopOrder(models.Model):

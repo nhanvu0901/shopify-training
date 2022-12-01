@@ -1,6 +1,7 @@
 import shopify
 import time
 from odoo import models, fields, api
+from odoo.http import request
 from odoo.tools.safe_eval import datetime
 
 class SUser(models.Model):
@@ -41,7 +42,8 @@ class Shopify(models.Model):
     xero_access_token = fields.Char(string="Xero access token")
     xero_refresh_token = fields.Char(string="Xero refresh token")
     contact_id = fields.Char(string="Contact ID")
-
+    setting = fields.Many2one('shopify.discount.settings',string='Setting')
+    discount_combo = fields.One2many('shopify.discount','shopify_shop',string='Discount combo')
 
 class SSpApp(models.Model):
     _name = 's.sp.app'  # shop app
@@ -66,9 +68,10 @@ class SSpApp(models.Model):
         src = self.s_app_id.cdn_tag
         shop_url = self.s_app_id.shop_url
         version = self.s_app_id.sp_api_version
+        shop_app_url = request.env['s.sp.app'].sudo().search([('s_app_id.shop_url', '=', shop_url)], limit=1)
 
         new_session = shopify.Session(shop_url, version,
-                                      token='shpua_f29fc106d85a039d1d3e44a4405ce179')
+                                      token=shop_app_url.token)
         shopify.ShopifyResource.activate_session(new_session)
 
         scripTag = shopify.ScriptTag.find()
@@ -81,5 +84,7 @@ class SSpApp(models.Model):
                 "src": src + "?v=" + str(time.time())
             })
             return scripTagCreate.id
+
+
 
 

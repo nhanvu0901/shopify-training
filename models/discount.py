@@ -1,6 +1,7 @@
 import json
 
-from odoo import models, fields, api
+from odoo import models, fields, api, http
+from odoo.http import request
 
 
 class SAppDiscount(models.Model):
@@ -10,6 +11,9 @@ class SAppDiscount(models.Model):
     discount_type = fields.Selection([('per', '%'), ('amount', 'Amount')], default='per', required=True)
     discount_amount = fields.Float()
     products = fields.One2many('shopify.discount.products', 'shop_discount_id')
+    shopify_shop =fields.Many2one('s.sp.shop')
+    store_name = fields.Char(string='Store name',related='shopify_shop.domain')
+
 
 
 class SAppDiscountProduct(models.Model):
@@ -22,15 +26,20 @@ class SAppDiscountProduct(models.Model):
     qty = fields.Integer(string="Amount of product apply discount")
     product_price = fields.Char(string="Product price",related="product_fetch.product_price")
     image_url = fields.Char(string="Images url",related="product_fetch.product_image")
-
+    varient_id = fields.Char(string="Varient ID",related="product_fetch.varient_id")
+    store_name =fields.Char(string="Shop name",related="product_fetch.store_name")
 
 class SAppDiscountSettings(models.Model):
     _name = 'shopify.discount.settings'
 
-    font_color = fields.Char()
-    add_to_cart_color = fields.Char()
-    position = fields.Char()
-    # ...
+    font_color = fields.Char(default='#FFFF')
+    add_to_cart_color = fields.Char(default='#FFFF',string='Add to cart color')
+    position = fields.Char(default='bottom')
+    store = fields.One2many('s.sp.shop','setting',string='Store name')
+
+
+
+
 
 
 class SAppDiscountData(models.Model):

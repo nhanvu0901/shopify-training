@@ -16,7 +16,7 @@
                      <field name="discount_type"/>
                      <field name="discount_amount"/>
                      <field name="products"/>
-
+                     <field name="store_name"/>
                 </tree>
               </field>
         </record>
@@ -33,6 +33,8 @@
                      <field name="qty"/>
                     <field name ="product_price"/>
                     <field name="image_url"/>
+                    <field name="varient_id"/>
+                    <field name="store_name"/>
                 </tree>
               </field>
         </record>
@@ -64,8 +66,22 @@
         <record id='menu_root_client_discount_bundle_settings' model='ir.actions.act_window'>
             <field name="name">Shopify Action Window</field>
             <field name="res_model">shopify.discount.settings</field>
-            <field name="view_mode">form</field>
+           <field name="view_mode">tree,form</field>
         </record>
+
+            <record model="ir.ui.view" id="shopify_setting">
+                  <field name="name">Shop Bundle Setting</field>
+                  <field name="model">shopify.discount.settings</field>
+                  <field name="arch" type="xml">
+                    <tree>
+                         <field name="font_color"/>
+                         <field name="add_to_cart_color"/>
+                         <field name="position"/>
+                        <field name="store"/>
+                    </tree>
+                  </field>
+                </record>
+
 
 <!--        <record id='menu_root_client_discount_bundle_report' model='ir.actions.act_window'>-->
 <!--            <field name="name">Shopify Action Window</field>-->

@@ -23,6 +23,8 @@
                         <field name="handle"/>
                         <field name="quantity"/>
                         <field name="product_image"/>
+                        <field name="varient_id"/>
+                        <field name="store_name"/>
                 </tree>
             </field>
         </record>

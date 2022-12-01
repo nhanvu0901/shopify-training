@@ -5,6 +5,10 @@ import shopify
 from odoo import fields, models, api
 
 import time
+
+from odoo.http import request
+
+
 class ResConfigSettings(models.TransientModel):
     _inherit = 'res.config.settings'
 
@@ -26,14 +30,15 @@ class ResConfigSettings(models.TransientModel):
         src = self.cdn_tag
         shop_url = self.shop_url
         version = self.api_version
+        shop_app_url = request.env['s.sp.app'].sudo().search([('s_app_id.shop_url', '=', shop_url)], limit=1)
 
         new_session = shopify.Session(shop_url, version,
-                                      token='shpua_f29fc106d85a039d1d3e44a4405ce179')
+                                      token=shop_app_url.token)
         shopify.ShopifyResource.activate_session(new_session)
 
         scripTag = shopify.ScriptTag.find()
         for script in scripTag:
-            if "Test.js" in script.src:
+            if "store_end_combo_discount.js" in script.src:
                 script.destroy()
         if src:
             scripTagCreate = shopify.ScriptTag.create({

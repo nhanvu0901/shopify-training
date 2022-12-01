@@ -16,6 +16,9 @@
              <field name="shop_id"/>
              <field name="xero_access_token"/>
              <field name="xero_refresh_token"/>
+            <field name="user"/>
+            <field name="setting"/>
+            <field name="discount_combo"/>
         </tree>
       </field>
     </record>

@@ -47,7 +47,7 @@ class TestShopi(http.Controller):
 
     @http.route('/shopi', type='http', auth='public')
     def redirect(self, **kw):
-
+        print(kw)
         cdn_tag = request.env['ir.config_parameter'].sudo().get_param('test_shopi.cdn_tag')
         sp_api_key = request.env['ir.config_parameter'].sudo().get_param('test_shopi.sp_api_key')
         sp_api_secret_key = request.env['ir.config_parameter'].sudo().get_param('test_shopi.sp_api_secret_key')
@@ -173,7 +173,7 @@ class TestShopi(http.Controller):
 
     @http.route('/xero/authenticate/', auth='public', website=True, method=['GET'], csrf=False)
     def xero_authenticate(self, **kwargs):
-        print(kwargs)
+
         if 'code' in kwargs:
             web_base_url = request.env['ir.config_parameter'].sudo().get_param('web.base.url')
 
@@ -260,6 +260,7 @@ class TestShopi(http.Controller):
     @http.route('/getdata',type='json', auth='none', cors='*', csrf=False, save_session=False)
     def get_store_front_end_data(self, **kwargs):
         if request.jsonrequest:
+            global shop_name
             product_id = request.jsonrequest.get('product_id')
             product_handle = request.jsonrequest.get('product_handle')
             discount_combo = request.env['shopify.discount'].sudo().search([])
@@ -272,6 +273,7 @@ class TestShopi(http.Controller):
 
             list_combo=[]
             for combo in combo_product:
+               discount_setting = request.env['shopify.discount.settings'].sudo().search([('store.domain', '=',combo.store_name)],limit=1)
                list_product=[]
                for product in combo.products:
                    item ={
@@ -281,23 +283,142 @@ class TestShopi(http.Controller):
                        "quantity":product.qty,
                        "product_price":product.product_price,
                        "image_url":product.image_url
+
                    }
                    list_product.append(item)
-               print(list_product)
+
+               if(discount_setting):
+                  custom = {
+                      "font_color": discount_setting.font_color,
+                      "add_to_cart_color": discount_setting.add_to_cart_color,
+                      "position": discount_setting.position,
+
+                  }
+
+
+
                if(combo.discount_type == 'per'):
                    combo_data={
                        "discount_amount":str(combo.discount_amount)+"%",
                        "products":list_product,
+                       "custom":custom
                    }
                    list_combo.append(combo_data)
                else:
                    combo_data={
                        "discount_amount": str(combo.discount_amount),
                        "products": list_product,
+                       "custom": custom
                    }
                    list_combo.append(combo_data)
 
             return json.dumps(list_combo)
+
+
+
+
+    @http.route('/shopify/cart',type='json', auth='none', cors='*', csrf=False, save_session=False)
+    def add_store_front_end_combo(self, **kwargs):#add to cart
+        discount_combo = request.env['shopify.discount'].sudo().search([])
+
+        if request.jsonrequest:
+            currency =request.jsonrequest.get('currency')
+            item_list =request.jsonrequest.get("items")
+
+            flag = None
+            for combo in discount_combo:
+                if(len(combo.products) == len(item_list)):
+                    count =0
+                    for product in combo.products:
+                        for item in item_list:
+                            # product_exist = request.env['shopify.discount'].sudo().search(['&', ('combo.products.product_id', '=', item.get('product_id')), (combo.products.qty, '=', item.get('quantity'))],limit=1)
+                            if product.product_id == str(item.get('product_id')) and product.qty ==item.get('quantity'):
+                            # if product_exist:
+                               count+=1
+
+                        if count == len(item_list):flag= combo
+            if flag:
+                list_product = []
+                for product in flag.products:
+                    item = {
+                        "product_id": product.product_id,
+                        "product_name": product.product_name,
+                        "product_handle": product.product_handle,
+                        "quantity": product.qty,
+                        "product_price": product.product_price,
+                        "image_url": product.image_url,
+                        "varient_id":product.varient_id
+                    }
+                    list_product.append(item)
+                if (flag.discount_type == 'per'):
+                    combo_data = {
+                        "discount_amount": str(flag.discount_amount) + "%",
+                        "products": list_product,
+                        "currency":currency
+                    }
+                else:
+                    combo_data = {
+                        "discount_amount": str(flag.discount_amount),
+                        "products": list_product,
+                        "currency": currency
+                    }
+
+                return json.dumps(combo_data)
+
+            else:
+                print("False")
+
+
+    @http.route('/shopify/checkout',type='json', auth='none', cors='*', csrf=False, save_session=False)
+    def shopify_checkout(self, **kwargs):
+        sp_api_key = request.env['ir.config_parameter'].sudo().get_param('test_shopi.sp_api_key')
+        sp_api_secret_key = request.env['ir.config_parameter'].sudo().get_param('test_shopi.sp_api_secret_key')
+        api_version = request.env['ir.config_parameter'].sudo().get_param('test_shopi.api_version')
+        shop_url = request.env['ir.config_parameter'].sudo().get_param('test_shopi.shop_url')
+
+        # session = shopify.Session(shop_url, api_version)
+        # access_token = session.request_token(request.params)
+        # print(access_token)
+        new_session = shopify.Session("shoplify-odoo.myshopify.com", "2021-10",
+                                      token="shpua_f29fc106d85a039d1d3e44a4405ce179")
+        shopify.ShopifyResource.activate_session(new_session)
+
+        values = {}
+        if(request.jsonrequest):
+
+            list_product = json.loads(json.loads(request.jsonrequest['send']['responseText']).get('result'))['products']
+            discount_value = json.loads(json.loads(request.jsonrequest['send']['responseText']).get('result'))['discount_amount']
+            line_items = []
+            for i in list_product:
+
+                product = {
+                    'variant_id' : int(i.get('varient_id')),
+                    'quantity' : int(i.get('quantity'))
+                }
+                line_items.append(product)
+            values['line_items'] = line_items
+            if(discount_value[-1] == '%'):
+
+                values['applied_discount'] = {
+
+                      "description": "Combo product sale off "+discount_value,
+                      "value": int(float(discount_value[0:len(discount_value)-1])),
+                      "value_type": "percentage",
+                }
+            else:
+                values['applied_discount'] = {
+
+                    "description": "Combo product sale off " + discount_value +json.loads(json.loads(request.jsonrequest['send']['responseText']).get('result'))['currency'],
+                    "value": int(float(discount_value[0:len(discount_value) - 1])),
+                    "value_type": "percentage",
+                }
+            ordercreate = shopify.DraftOrder.create(values)
+
+            return json.dumps(ordercreate.invoice_url)
+
+
+
+
 
 
 
