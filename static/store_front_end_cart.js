@@ -5,7 +5,10 @@ function initJQuery(e) {
 }
 
 initJQuery(function () {
+
+
     if (window.location.href.slice(-4) === "cart") {
+
            jQuery.ajax({
                         type: "GET",
                         url: window.shopUrl+"/cart.json",

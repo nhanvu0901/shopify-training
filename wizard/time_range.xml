@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <record id="combo_time_range_form" model="ir.ui.view">
+        <field name="name">warranty.mass.update.form.wizard</field>
+        <field name="model">combo.time.range</field>
+        <field name="arch" type="xml">
+            <form string="Create Appointment">
+                <group>
+                    <field name="date_from"/>
+                    <field name="date_to"/>
+                </group>
+                <footer>
+                    <button name="multi_update" string="Fetch Combo Sale" type="object" class="btn-primary"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="combo_time_range_wizard" model="ir.actions.act_window">
+        <field name="name">Fetch Combo Discount</field>
+        <field name="res_model">combo.time.range</field>
+        <field name="binding_model_id" ref="test_shopi.model_shopify_discount_data"/>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="view_id" ref="combo_time_range_form"/>
+    </record>
+
+</odoo>

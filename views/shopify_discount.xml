@@ -17,10 +17,15 @@
                      <field name="discount_amount"/>
                      <field name="products"/>
                      <field name="store_name"/>
-                     <field name="number_add_to_cart"/>
+
                 </tree>
               </field>
         </record>
+
+
+
+
+
 
       <record model="ir.ui.view" id="shopify_discount_product">
               <field name="name">Shopify discount product tree</field>
@@ -39,30 +44,6 @@
                 </tree>
               </field>
         </record>
-<!--        <record id="menu_root_client_xero_action_form" model="ir.ui.view">-->
-<!--            <field name="name">Shopify App</field>-->
-<!--            <field name="model">shopify.shop.xero</field>-->
-<!--            <field name="arch" type="xml">-->
-<!--                <form string="Shopify">-->
-<!--                    <sheet>-->
-<!--                        <group>-->
-<!--                            <field name="name"/>-->
-<!--                            <field name="discount_type"/>-->
-<!--                            <field name="discount_amount"/>-->
-<!--                        </group>-->
-<!--                        <group>-->
-<!--                            <field name="products">-->
-<!--                                <tree>-->
-<!--                                    <field name="product_id"/>-->
-<!--                                    <field name="product_handle"/>-->
-<!--                                    <field name="qty"/>-->
-<!--                                </tree>-->
-<!--                            </field>-->
-<!--                        </group>-->
-<!--                    </sheet>-->
-<!--                </form>-->
-<!--            </field>-->
-<!--        </record>-->
 
         <record id='menu_root_client_discount_bundle_settings' model='ir.actions.act_window'>
             <field name="name">Shopify Action Window</field>
@@ -84,30 +65,161 @@
                 </record>
 
 
-<!--        <record id='menu_root_client_discount_bundle_report' model='ir.actions.act_window'>-->
-<!--            <field name="name">Shopify Action Window</field>-->
-<!--            <field name="res_model">shopify.discount.products.report</field>-->
-<!--            <field name="view_mode">form</field>-->
-<!--        </record>-->
 
-         <record id="menu_root_discount_report_action_form" model="ir.ui.view">
-            <field name="name">Shopify App</field>
-            <field name="model">shopify.shop.xero</field>
-            <field name="arch" type="xml">
-                <form string="Shopify">
-                    <sheet>
-                        <group>
-                            <field name="date_start"/>
-                            <field name="date_end"/>
-                            <field name="discount_id"/>
-                        </group>
-                        <group>
-                            <field name="data" widget="discount_graph"/>
-                        </group>
-                    </sheet>
-                </form>
-            </field>
-         </record>
+
+<!--         <record id="menu_root_discount_report_action_form" model="ir.ui.view">-->
+<!--            <field name="name">Shopify App</field>-->
+<!--            <field name="model">shopify.shop.xero</field>-->
+<!--            <field name="arch" type="xml">-->
+<!--                <form string="Shopify">-->
+<!--                    <sheet>-->
+<!--                        <group>-->
+<!--                            <field name="date_start"/>-->
+<!--                            <field name="date_end"/>-->
+<!--                            <field name="discount_id"/>-->
+<!--                        </group>-->
+<!--                        <group>-->
+<!--                            <field name="data" widget="discount_graph"/>-->
+<!--                        </group>-->
+<!--                    </sheet>-->
+<!--                </form>-->
+<!--            </field>-->
+<!--         </record>-->
+      <record id='menu_shopify_discount_data_action' model='ir.actions.act_window'>
+            <field name="name">Shopify Data Action</field>
+            <field name="res_model">shopify.discount.data</field>
+           <field name="view_mode">tree,form</field>
+        </record>
+
+      <record model="ir.ui.view" id="shopify_discount_data_tree">
+              <field name="name">Shopify Data Tree</field>
+              <field name="model">shopify.discount.data</field>
+              <field name="arch" type="xml">
+                <tree>
+                     <field name="discount_id"/>
+                     <field name="number_add_to_cart"/>
+                     <field name="sale"/>
+                     <field name="date_create"/>
+                     <field name="total_revenue"/>
+                </tree>
+              </field>
+        </record>
+
+      <record id="shopify_data_view_form" model="ir.ui.view">
+        <field name="name">Shopify Data Form</field>
+        <field name="model">shopify.discount.data</field> <!--create view for the library.book-->
+        <field name="arch" type="xml">
+            <form js_class="on_boarding_form">
+                <sheet>
+                    <div class="oe_title">
+                    </div>
+                    <group>
+                        <group><field name="discount_id"/></group>
+                         <group><field name="number_add_to_cart"/></group>
+<!--                         <field name="publisher_id"/>-->
+                         <group><field name="sale"/></group>
+                        <group><field name="date_create"/></group>
+                        <group><field name="total_revenue"/></group>
+                    </group>
+                    <group><field name="html_iframe"/></group>
+
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+
+
+
+      <template id="view_shopify_data_chart" name="view_shopify_data_chart_name">
+            <head>
+                 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.5.0/Chart.min.js"/>
+<!--                <script src="/test_shopi/static/chart_render.js"/>-->
+            </head>
+            <body>
+                 <canvas id="densityChart" ></canvas>
+                <script type="text/javascript">
+                      window.global_variable = <t t-raw="data"/>
+
+
+                    var densityCanvas = document.getElementById("densityChart");
+                    Chart.defaults.global.defaultFontFamily = "Lato";
+                    Chart.defaults.global.defaultFontSize = 18;
+                     var revenueData = {
+                              label: 'Combo Revenue (VND)',
+                              data: [window.global_variable.total_revenue],
+                              backgroundColor: 'rgba(0, 99, 132, 0.6)',
+                              borderColor: 'rgba(0, 99, 132, 1)',
+                              yAxisID: "y-axis-density"
+                            };
+                            var numberAddToCart = {
+                              label: 'Number add to cart',
+                              data: [window.global_variable.number_add_to_cart],
+                              backgroundColor: 'rgba(99, 132, 0, 0.6)',
+                              borderColor: 'rgba(99, 132, 0, 1)',
+                              yAxisID: "y-axis-gravity"
+                            };
+                            var comboData = {
+                              labels: [window.global_variable.name],
+                              datasets: [revenueData, numberAddToCart]
+                            };
+                            var chartOptions = {
+                                  scales: {
+                                    xAxes: [{
+                                      barPercentage: 1,
+                                      categoryPercentage: 0.6
+                                    }],
+                                    yAxes: [{
+                                      id: "y-axis-density",
+                                      ticks: {
+                                          beginAtZero: true
+                                      }
+                                    }, {
+                                      id: "y-axis-gravity",
+                                      ticks: {
+                                          beginAtZero: true
+                                        }
+                                    }
+                                    ]
+                                  }
+                                };
+
+                                var barChart = new Chart(densityCanvas, {
+                                  type: 'bar',
+                                  data: comboData,
+                                  options: chartOptions
+                                });
+                </script>
+
+
+            </body>
+        </template>
+
+
+
+
+
+
+
+       <record id='menu_shopify_discount_report_tree' model='ir.actions.act_window'>
+            <field name="name">Shopify Discount Report</field>
+            <field name="res_model">shopify.discount.report</field>
+           <field name="view_mode">tree,form</field>
+        </record>
+
+       <record model="ir.ui.view" id="shopify_discount_report_tree">
+              <field name="name">Shopify discount tree</field>
+              <field name="model">shopify.discount.report</field>
+              <field name="arch" type="xml">
+                <tree>
+                     <field name="date_start"/>
+                     <field name="name"/>
+                     <field name="total_revenue"/>
+                     <field name="number_add_to_cart"/>
+                </tree>
+              </field>
+        </record>
+
 
 
         <menuitem name="Discount" id="menu_root_client_discount" sequence="310"
@@ -117,6 +229,12 @@
                   parent="menu_root_client_discount"/>
         <menuitem name="Discount Bundle Settings" id="menu_root_client_discount_settings" sequence="310"
                   action="menu_root_client_discount_bundle_settings"
+                  parent="menu_root_client_discount"/>
+        <menuitem name="Discount Report"  id="menu_discount_report" sequence="310"
+                  action="menu_shopify_discount_report_tree"
+                  parent="menu_root_client_discount"/>
+      <menuitem name="Discount Data"  id="menu_discount_data" sequence="310"
+                  action="menu_shopify_discount_data_action"
                   parent="menu_root_client_discount"/>
 <!--        <menuitem name="Discount Bundle Report" id="menu_root_client_discount_report" sequence="310"-->
 <!--                  action="menu_root_client_discount_bundle_report"-->

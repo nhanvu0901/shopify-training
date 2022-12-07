@@ -24,7 +24,13 @@
     # any module necessary for this one to work correctly
     'depends': [
         'base',
+        'web'
     ],
+    'assets': {
+            'web.assets_backend': [
+                '/test_shopi/static/chart_form_render.js',
+            ],
+        },
 
     # always loaded
     'data': [
@@ -43,11 +49,13 @@
         'views/xero_model.xml',
         'views/table_history.xml',
         'views/invoice_record_history.xml',
-        'views/shopify_discount.xml'
+        'views/shopify_discount.xml',
+        'wizard/time_range.xml'
 
     ],
     # only loaded in demonstration mode
     'demo': [
         'demo/demo.xml',
     ],
+
 }

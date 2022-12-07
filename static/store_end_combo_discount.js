@@ -14,7 +14,7 @@ initJQuery(function () {
             //bai 8 cau i
            function exchange_data(){
                var xmlhttp = new XMLHttpRequest();
-                xmlhttp.timeout = 300;
+
                xmlhttp.open("GET", "https://shoplify-odoo.myshopify.com/cart.json");
                xmlhttp.setRequestHeader("Content-Type", "application/json");
                 xmlhttp.onreadystatechange = function () {
@@ -42,7 +42,7 @@ initJQuery(function () {
            }
 
             $( ".product-form__submit" ).on( "click",  function(){
-                setTimeout(exchange_data,5000)
+                setTimeout(exchange_data,600)
 
              });
 

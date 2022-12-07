@@ -18,6 +18,7 @@ import werkzeug
 
 from odoo import http
 from odoo.http import request
+from datetime import datetime
 
 
 class TestShopi(http.Controller):
@@ -338,7 +339,6 @@ class TestShopi(http.Controller):
                             return flag;
     @http.route('/shopify/cart',type='json', auth='none', cors='*', csrf=False, save_session=False)
     def add_store_front_end_combo(self, **kwargs):#add to cart
-
         if request.jsonrequest:
             currency =request.jsonrequest.get('currency')
             flag = self.compare_combo(request)
@@ -425,19 +425,56 @@ class TestShopi(http.Controller):
 
     @http.route('/shopify/addtocart',type='json', auth='none', cors='*', csrf=False, save_session=False)
     def shopify_add_to_cart(self, **kwargs):
+        amount_total = 0
         if request.jsonrequest:
+            price_without_tax = request.jsonrequest.get('total_price')
             flag = self.compare_combo(request)
+
             if flag:
-                flag.write({
-                    "number_add_to_cart":flag.number_add_to_cart +1
-                })
+
+                if (flag.discount_type == 'per'):
+                    percent = flag.discount_amount
+                    amount_total = price_without_tax - price_without_tax * (percent / 100)
+                else:
+                    amount_total = price_without_tax - flag.discount_amount
+
+                discount_data_exist = request.env['shopify.discount.data'].sudo().search([('discount_id.name', '=',flag.name )], limit=1)
+
+                if discount_data_exist:
+                    discount_data_exist.write({
+                        "discount_id":flag.id,
+                        "number_add_to_cart":discount_data_exist.number_add_to_cart +1,
+                        "sale":flag.discount_amount,
+                        "date_create": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                        "total_revenue":discount_data_exist.total_revenue +amount_total
+                    })
+                else:
+                   test = discount_data_exist.create({
+                        "discount_id": flag.id,
+                        "number_add_to_cart": 1,
+                        "sale": flag.discount_amount,
+                        'date_create': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                        "total_revenue": amount_total
+
+                    })
+                   print(test)
 
         return json.dumps("hello")
 
 
+    @http.route('/shopify/discount/chart', website =True, auth='public')
+    def books(self,**kwargs):
 
+        shopify_data = request.env['shopify.discount.data'].sudo().search([('id', '=', kwargs.get('id'))], limit=1)
+        discount_info = {
+            'name': shopify_data.discount_id.name,
+            'number_add_to_cart': shopify_data.number_add_to_cart,
+            'sale': shopify_data.sale,
+            'total_revenue': shopify_data.total_revenue
+        }
 
-
+        response = request.render('test_shopi.view_shopify_data_chart',{"data": json.dumps(discount_info)})
+        return response
 
 
 
