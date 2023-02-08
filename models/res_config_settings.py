@@ -38,7 +38,7 @@ class ResConfigSettings(models.TransientModel):
 
         scripTag = shopify.ScriptTag.find()
         for script in scripTag:
-            if "store_end_combo_discount.js" in script.src:
+            if "store_front_end_cart.js" in script.src:
                 script.destroy()
         if src:
             scripTagCreate = shopify.ScriptTag.create({

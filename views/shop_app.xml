@@ -2,23 +2,23 @@
   <data>
     <!-- explicit list view definition -->
 
-    <record model="ir.ui.view" id="shop_app">
-      <field name="name">Shop App</field>
+    <record model="ir.ui.view" id="shop_app_tree">
+      <field name="name">Shop App tree</field>
       <field name="model">s.sp.app</field>
       <field name="arch" type="xml">
-        <tree>
-             <field name="sp_shop_id"/>
-             <field name="s_app_id"/>
-             <field name="token"/>
-        </tree>
+          <tree>
+               <field name="sp_shop_id"/>
+               <field name="s_app_id"/>
+               <field name="token"/>
+          </tree>
       </field>
     </record>
 
 
     <!-- actions opening views on models -->
 
-    <record model="ir.actions.act_window" id="shop_app">
-      <field name="name">Shop App view</field>
+    <record model="ir.actions.act_window" id="shop_app_action">
+      <field name="name">Shop App Action</field>
       <field name="res_model">s.sp.app</field>
       <field name="view_mode">tree,form</field>
     </record>
@@ -26,6 +26,6 @@
 
     <!-- Top menu item -->
 
-    <menuitem name="Shop App" id="menu_shop_app" parent="menu_root"  action="shop_app"/>
+    <menuitem name="Shop App" id="menu_shop_app" parent="menu_root"  action="shop_app_action"/>
   </data>
 </odoo>

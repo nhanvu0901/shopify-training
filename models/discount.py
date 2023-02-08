@@ -2,7 +2,7 @@ import json
 
 from odoo import models, fields, api, http
 from odoo.http import request
-
+from datetime import datetime
 
 class SAppDiscount(models.Model):
     _name = 'shopify.discount'
@@ -44,26 +44,97 @@ class SAppDiscountData(models.Model):
 
     discount_id = fields.Many2one('shopify.discount')
 
-    number_add_to_cart = fields.Integer(string='Total number add to cart')
-    sale = fields.Float(string='Sale Amount')
+    # number_add_to_cart = fields.Integer(string='Total number add to cart')
+    sale = fields.Char(string='Sale Amount')
     date_create = fields.Datetime(string="Date Created")
-    total_revenue = fields.Float(string="Total Revenue")
-    html_iframe = fields.Html(compute="get_iframe",sanitize=False,string="Sale combo chart")
+    # total_revenue = fields.Float(string="Total Revenue")
+    price_off = fields.Float(string="Price Off")
 
-    @api.depends('discount_id', 'number_add_to_cart', 'sale', 'date_create', 'total_revenue')
-    def get_iframe(self):
-        for rec in self:
-            rec.html_iframe = '<iframe src="/shopify/discount/chart?id=' + str(rec.id) + '" width="600px" height="400px" border="none" "></iframe>'
+
+
 
 
 
 class SAppDiscountDataReport(models.Model):
     _name = 'shopify.discount.report'
-    discount_id = fields.Many2one('shopify.discount.data')
+    discount_id = fields.Many2one('shopify.discount')
+    date_end = fields.Datetime(string="Date End")
     date_start = fields.Datetime(string="Date Created")
-    name = fields.Char(string="Combo name")
-    total_revenue = fields.Float(string="Total Revenue")
+    shopify_count =  fields.One2many('shopify.discount.count','shopify_report')
+    flag = fields.Boolean(default=False)
+    html_iframe = fields.Html(compute="get_iframe",sanitize=False,string="Sale combo chart")
+
+    @api.depends('discount_id', 'date_end', 'date_start', 'shopify_count')
+    def get_iframe(self):
+        if self.flag == True and self.id:
+
+                self.html_iframe = '<iframe src="/shopify/discount/chart?shopify_discount_id=' + str(self.id) + '" width="800px" height="400px" border="none" "></iframe>'
+        else:
+
+                self.html_iframe = '<iframe  width="800px" height="400px"></iframe>'
+
+    def anilytic(self):
+       if len(self.shopify_count) ==0:
+           if self.discount_id and self.date_end and self.date_start:
+               # tim duoc bundle cung id
+               find_bundle_data = request.env['shopify.discount.data'].search(['&', ('date_create', '>=',self.date_start ), ('date_create', '<=', self.date_end),('discount_id.id','=',self.discount_id.id)])
+               if find_bundle_data:
+                   #loc bundle de no co cung ngay
+                   list_data={}
+                   for data in find_bundle_data:
+                      if data.date_create.strftime("%m/%d/%Y") not in list_data.keys():
+                          list_data[data.date_create.strftime("%m/%d/%Y")] = [data.date_create,1,data]
+                      else :
+                          list_data[data.date_create.strftime("%m/%d/%Y")] = [data.date_create, list_data.get(data.date_create.strftime("%m/%d/%Y"))[1]+1,data]
+                          print(list_data)
+                   find_bundle_data = request.env['shopify.discount.count']
+
+                   for item in list_data:
+                       if list_data.get(item)[1] >1:#neu so lan add to cart >1
+                           find_bundle_data.create({
+                               "bundle_id":list_data.get(item)[2].discount_id.id,
+                               "discount_id":list_data.get(item)[2].id,
+                               "number_add_to_cart":list_data.get(item)[1],
+                               "sale":list_data.get(item)[2].sale,
+                               "date_create":list_data.get(item)[0],
+                               "price_off":list_data.get(item)[2].price_off* list_data.get(item)[1],
+                               "shopify_report":self.id,
+                           })
+                       else:
+                           find_bundle_data.create({
+                               "bundle_id": list_data.get(item)[2].discount_id.id,
+                               "discount_id": list_data.get(item)[2].id,
+                               "number_add_to_cart": list_data.get(item)[1],
+                               "sale": list_data.get(item)[2].sale,
+                               "date_create": list_data.get(item)[0],
+                               "price_off": list_data.get(item)[2].price_off,
+                               "shopify_report": self.id,
+                           })
+                   self.flag = True
+       else:
+           find_bundle_data = request.env['shopify.discount.count']
+           find_bundle_data.unlink()
+
+
+
+
+
+
+
+
+
+class SAppDiscountDataCount(models.Model):
+    _name = 'shopify.discount.count'
+    discount_id = fields.Many2one('shopify.discount.data')
+    bundle_id = fields.Many2one('shopify.discount')
     number_add_to_cart = fields.Integer(string='Total number add to cart')
+    sale = fields.Char(string='Sale Amount')
+    date_create = fields.Datetime(string="Date Created")
+    # total_revenue = fields.Float(string="Total Revenue")
+    price_off = fields.Float(string="Price Off")
+    shopify_report = fields.Many2one('shopify.discount.report')
+
+
 
 
 

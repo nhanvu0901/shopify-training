@@ -23,6 +23,7 @@ from datetime import datetime
 
 class TestShopi(http.Controller):
 
+
     @http.route('/test_shopi', type='http', auth="public", website=True, method=['GET'], csrf=False)
     def index(self, **kw):
         sp_api_key = request.env['ir.config_parameter'].sudo().get_param('test_shopi.sp_api_key')
@@ -108,7 +109,7 @@ class TestShopi(http.Controller):
                     "country_name": country_name,
                     "email": email,
                     "shop_id": shop.id,
-                    "user": current_user
+                    "user": current_user.id
                 }
             )
 
@@ -119,7 +120,7 @@ class TestShopi(http.Controller):
                 "currency": currency,
                 "country_name": country_name,
                 "email": email,
-                "user": current_user,
+                "user": current_user.id,
                 "shop_id": shop.id
             })
 
@@ -231,8 +232,7 @@ class TestShopi(http.Controller):
                     accountXML = responseAccount.text
                     obj = xmltodict.parse(accountXML)
                     json_string = json.dumps(obj)
-                    valXeroModel['contact_id'] = json.loads(json_string).get('Response').get("Contacts").get(
-                        "Contact").get("ContactID")
+                    valXeroModel['contact_id'] = json.loads(json_string).get('Response').get("Contacts").get("Contact")[0].get("ContactID")
                 xero_model_exist = request.env['xero.model'].sudo().search(
                     [('id_xero_account', '=', response.json()[0]['id'])],
                     limit=1)
@@ -313,37 +313,45 @@ class TestShopi(http.Controller):
 
             return json.dumps(list_combo)
 
+    def testList(self,list):
+        for item in list[1:]:
+            if item != list[0]:
+                return False
+        return True
 
 
-    def compare_combo(self,request):
-        discount_combo = request.env['shopify.discount'].sudo().search([])
+    def compare_combo(self,item_list):
+            discount_combo = request.env['shopify.discount'].sudo().search([])
 
-        if request.jsonrequest:
-
-            item_list = request.jsonrequest.get("items")
 
             flag = None
             for combo in discount_combo:
-                if (len(combo.products) == len(item_list)):
+                # if (len(combo.products) == len(item_list)):
                     count = 0
+                    list_combo_count=[]
                     for product in combo.products:
                         for item in item_list:
                             # product_exist = request.env['shopify.discount'].sudo().search(['&', ('combo.products.product_id', '=', item.get('product_id')), (combo.products.qty, '=', item.get('quantity'))],limit=1)
-                            if product.product_id == str(item.get('product_id')) and product.qty == item.get(
-                                    'quantity'):
+                            if product.product_id == str(item.get('product_id')) and item.get('quantity') % product.qty ==0:
                                 # if product_exist:
                                 count += 1
-
-                        if count == len(item_list):
+                                spare = int(item.get('quantity') / product.qty )
+                                if(spare != 1):
+                                    list_combo_count.append(spare)
+                        if count ==len(combo.products):
                             flag = combo
-                            return flag;
+                            if len(list_combo_count) != 0:
+                                if self.testList(list_combo_count):
+                                   return [flag,list_combo_count[0]]
+                            return [flag];
     @http.route('/shopify/cart',type='json', auth='none', cors='*', csrf=False, save_session=False)
     def add_store_front_end_combo(self, **kwargs):#add to cart
         if request.jsonrequest:
             currency =request.jsonrequest.get('currency')
-            flag = self.compare_combo(request)
-            if flag:
+            data = self.compare_combo(request.jsonrequest.get("items"))
+            if data:
                 list_product = []
+                flag = data[0]
                 for product in flag.products:
                     item = {
                         "product_id": product.product_id,
@@ -359,65 +367,115 @@ class TestShopi(http.Controller):
                     combo_data = {
                         "discount_amount": str(flag.discount_amount) + "%",
                         "products": list_product,
-                        "currency":currency
+                        "currency":currency,
                     }
                 else:
                     combo_data = {
                         "discount_amount": str(flag.discount_amount),
                         "products": list_product,
-                        "currency": currency
+                        "currency": currency,
+
                     }
+
+                if(len(data) ==2):
+                    combo_data['has_many_combo'] =data[1]
 
                 return json.dumps(combo_data)
 
             else:
                 print("False")
 
+    def initShopifySession(self):
+        # sp_api_key = request.env['ir.config_parameter'].sudo().get_param('bought_together.sp_api_key')
+        # sp_api_secret_key = request.env['ir.config_parameter'].sudo().get_param('bought_together.sp_api_secret_key')
+        shop_url = request.env['ir.config_parameter'].sudo().get_param('test_shopi.shop_url')
+        api_version = request.env['ir.config_parameter'].sudo().get_param('test_shopi.api_version')
 
+        shopify_app_exist = request.env['s.app'].sudo().search([('shop_url', '=', shop_url)], limit=1)
+
+        new_session = shopify.Session(shop_url, api_version, token=shopify_app_exist.sp_access_token)
+        shopify.ShopifyResource.activate_session(new_session)
+        return new_session
     @http.route('/shopify/checkout',type='json', auth='none', cors='*', csrf=False, save_session=False)
     def shopify_checkout(self, **kwargs):
-        sp_api_key = request.env['ir.config_parameter'].sudo().get_param('test_shopi.sp_api_key')
-        sp_api_secret_key = request.env['ir.config_parameter'].sudo().get_param('test_shopi.sp_api_secret_key')
-        api_version = request.env['ir.config_parameter'].sudo().get_param('test_shopi.api_version')
-        shop_url = request.env['ir.config_parameter'].sudo().get_param('test_shopi.shop_url')
 
-        # session = shopify.Session(shop_url, api_version)
-        # access_token = session.request_token(request.params)
-        # print(access_token)
-        new_session = shopify.Session("shoplify-odoo.myshopify.com", "2021-10",
-                                      token="shpua_f29fc106d85a039d1d3e44a4405ce179")
-        shopify.ShopifyResource.activate_session(new_session)
+        self.initShopifySession()
 
         values = {}
         if(request.jsonrequest):
 
-            list_product = json.loads(json.loads(request.jsonrequest['send']['responseText']).get('result'))['products']
-            discount_value = json.loads(json.loads(request.jsonrequest['send']['responseText']).get('result'))['discount_amount']
+
+            if len(self.compare_combo(json.loads(request.jsonrequest.get("origin_data")).get("items"))) != 1:
+                spare = self.compare_combo(json.loads(request.jsonrequest.get("origin_data")).get("items"))[1]
+            else:
+                spare = 1
+
+            list_product = request.jsonrequest.get('send')
+            discount_value = request.jsonrequest.get('discount_amount')
+            list_product_not_sale = request.jsonrequest.get('list_product_not_sale')
+            for product in list_product_not_sale:
+                get_product = {
+                  "product_id":product.get("product_id"),
+                  "product_name":product.get("title"),
+                    "varient_id":product.get("variant_id"),
+                    "quantity":product.get("quantity"),
+                    "is_bundle_product_sale":product.get("is_bundle_product_sale"),
+                }
+                list_product.append(get_product)
+
+
+
             line_items = []
             for i in list_product:
 
                 product = {
-                    'variant_id' : int(i.get('varient_id')),
-                    'quantity' : int(i.get('quantity'))
+                    'variant_id': int(i.get('varient_id')),
+                    'quantity': int(i.get('quantity')) *spare
                 }
+
+
+                if i.get("is_bundle_product_sale") == True:
+                    if (discount_value[-1] == '%'):
+
+                        applied_discount = {
+
+                          "description": "Combo product sale off "+discount_value,
+                          "value": int(float(discount_value[0:len(discount_value)-1])),
+                          "value_type": "percentage",
+                    }
+                    else:
+                        applied_discount = {
+
+                            "description": "Combo product sale off " + discount_value ,
+                            "value": int(float(discount_value[0:len(discount_value) - 1])),
+                            "value_type": "fixed_amount",
+                        }
+                    product['applied_discount'] = applied_discount
                 line_items.append(product)
+
+
+
+
+
             values['line_items'] = line_items
-            if(discount_value[-1] == '%'):
-
-                values['applied_discount'] = {
-
-                      "description": "Combo product sale off "+discount_value,
-                      "value": int(float(discount_value[0:len(discount_value)-1])),
-                      "value_type": "percentage",
-                }
-            else:
-                values['applied_discount'] = {
-
-                    "description": "Combo product sale off " + discount_value +json.loads(json.loads(request.jsonrequest['send']['responseText']).get('result'))['currency'],
-                    "value": int(float(discount_value[0:len(discount_value) - 1])),
-                    "value_type": "percentage",
-                }
+            # if(discount_value[-1] == '%'):
+            #
+            #     values['applied_discount'] = {
+            #
+            #           "description": "Combo product sale off "+discount_value,
+            #           "value": int(float(discount_value[0:len(discount_value)-1])),
+            #           "value_type": "percentage",
+            #     }
+            # else:
+            #     values['applied_discount'] = {
+            #
+            #         "description": "Combo product sale off " + discount_value +json.loads(json.loads(request.jsonrequest['send']['responseText']).get('result'))['currency'],
+            #         "value": int(float(discount_value[0:len(discount_value) - 1])),
+            #         "value_type": "fixed_amount",
+            #     }
             ordercreate = shopify.DraftOrder.create(values)
+
+
 
             return json.dumps(ordercreate.invoice_url)
 
@@ -428,54 +486,72 @@ class TestShopi(http.Controller):
         amount_total = 0
         if request.jsonrequest:
             price_without_tax = request.jsonrequest.get('total_price')
-            flag = self.compare_combo(request)
-
+            data = self.compare_combo(request.jsonrequest.get("items"))
+            if len(self.compare_combo(request.jsonrequest.get("items"))) != 0 :
+                spare =self.compare_combo(request.jsonrequest.get("items"))[1]
+            else:
+                spare = 1
+            flag = data[0]
             if flag:
 
                 if (flag.discount_type == 'per'):
                     percent = flag.discount_amount
-                    amount_total = price_without_tax - price_without_tax * (percent / 100)
+                    if spare != 1:
+                         price_off = price_without_tax * (percent / 100) *2
+                    else:
+                        price_off = price_without_tax * (percent / 100)
+                    sale_amount = str(flag.discount_amount) +"%"
                 else:
-                    amount_total = price_without_tax - flag.discount_amount
+                    if spare != 1:
+                        price_off =  flag.discount_amount *2
+                    else:
+                        price_off = flag.discount_amount
+                    sale_amount = str(flag.discount_amount)
 
-                discount_data_exist = request.env['shopify.discount.data'].sudo().search([('discount_id.name', '=',flag.name )], limit=1)
+                discount_data_exist = request.env['shopify.discount.data']
+                test = discount_data_exist.create({
+                    "discount_id": flag.id,
+                    # "number_add_to_cart": 1,
+                    "sale": sale_amount,
+                    'date_create': datetime.now().strftime("%Y-%m-%d "),
+                    # "total_revenue": amount_total
+                    "price_off":price_off
 
-                if discount_data_exist:
-                    discount_data_exist.write({
-                        "discount_id":flag.id,
-                        "number_add_to_cart":discount_data_exist.number_add_to_cart +1,
-                        "sale":flag.discount_amount,
-                        "date_create": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                        "total_revenue":discount_data_exist.total_revenue +amount_total
-                    })
-                else:
-                   test = discount_data_exist.create({
-                        "discount_id": flag.id,
-                        "number_add_to_cart": 1,
-                        "sale": flag.discount_amount,
-                        'date_create': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                        "total_revenue": amount_total
+                })
+                print(test)
 
-                    })
-                   print(test)
+
+
 
         return json.dumps("hello")
 
 
     @http.route('/shopify/discount/chart', website =True, auth='public')
     def books(self,**kwargs):
+        if  kwargs.get('shopify_discount_id'):
+            shopify_data = request.env['shopify.discount.report'].sudo().search([('id', '=', kwargs.get('id'))], limit=1)
+            # discount_info = {
+            #     'name': shopify_data.discount_id.name,
+            #     'number_add_to_cart': shopify_data.number_add_to_cart,
+            #     'sale': shopify_data.sale,
+            #     'total_revenue': shopify_data.total_revenue
+            # }
+            data = request.env['shopify.discount.report'].sudo().search([('id', '=', kwargs.get('shopify_discount_id'))], limit=1).shopify_count
 
-        shopify_data = request.env['shopify.discount.data'].sudo().search([('id', '=', kwargs.get('id'))], limit=1)
-        discount_info = {
-            'name': shopify_data.discount_id.name,
-            'number_add_to_cart': shopify_data.number_add_to_cart,
-            'sale': shopify_data.sale,
-            'total_revenue': shopify_data.total_revenue
-        }
+            label= []
+            data_time_add_to_cart =[]
+            data_money_reduce = []
+            for item in data:
+                label.append(item.date_create.strftime("%m/%d/%Y"))
+                data_time_add_to_cart.append(item.number_add_to_cart)
+                data_money_reduce.append(item.price_off)
+            discount_info = {
+                  "label":label,
+                  "data_time_add_to_cart":data_time_add_to_cart,
+                  "data_money_reduce":data_money_reduce
+                }
 
-        response = request.render('test_shopi.view_shopify_data_chart',{"data": json.dumps(discount_info)})
-        return response
-
-
-
-
+            response = request.render('test_shopi.view_shopify_data_chart',{"data": json.dumps(discount_info)})
+            return response
+        else:
+            return ""

@@ -10,7 +10,7 @@ from odoo.http import request
 import urllib.parse
 import shopify
 import xmltodict
-from odoo.tools.safe_eval import datetime
+from datetime import datetime
 
 
 class ShopifyShopXero(models.Model):
@@ -136,8 +136,19 @@ class ShopifyShopXero(models.Model):
                         })
         else:
             return None
+    def initShopifySession(self):
+        # sp_api_key = request.env['ir.config_parameter'].sudo().get_param('bought_together.sp_api_key')
+        # sp_api_secret_key = request.env['ir.config_parameter'].sudo().get_param('bought_together.sp_api_secret_key')
+        shop_url = request.env['ir.config_parameter'].sudo().get_param('test_shopi.shop_url')
+        api_version = request.env['ir.config_parameter'].sudo().get_param('test_shopi.api_version')
 
+        shopify_app_exist = request.env['s.app'].sudo().search([('shop_url', '=', shop_url)], limit=1)
+
+        new_session = shopify.Session(shop_url, api_version, token=shopify_app_exist.sp_access_token)
+        shopify.ShopifyResource.activate_session(new_session)
+        return new_session
     def fetch_product(self):
+        self.initShopifySession()
         min = datetime.strftime(self.date_start, "%Y-%m-%d")
         max = datetime.strftime(self.date_end, "%Y-%m-%d")
         shop_url = request.env['ir.config_parameter'].sudo().get_param('test_shopi.shop_url')

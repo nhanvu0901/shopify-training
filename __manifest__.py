@@ -26,11 +26,6 @@
         'base',
         'web'
     ],
-    'assets': {
-            'web.assets_backend': [
-                '/test_shopi/static/chart_form_render.js',
-            ],
-        },
 
     # always loaded
     'data': [

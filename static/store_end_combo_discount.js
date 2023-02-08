@@ -15,7 +15,7 @@ initJQuery(function () {
            function exchange_data(){
                var xmlhttp = new XMLHttpRequest();
 
-               xmlhttp.open("GET", "https://shoplify-odoo.myshopify.com/cart.json");
+               xmlhttp.open("GET", window.shopUrl+"/cart.json");
                xmlhttp.setRequestHeader("Content-Type", "application/json");
                 xmlhttp.onreadystatechange = function () {
 
@@ -42,6 +42,7 @@ initJQuery(function () {
            }
 
             $( ".product-form__submit" ).on( "click",  function(){
+                console.log("123123123123123123213123")
                 setTimeout(exchange_data,600)
 
              });
@@ -89,11 +90,6 @@ initJQuery(function () {
                             let add_to_cart_color =''
 
                         response.forEach(combo=>{
-                            let color_font = combo.custom.font_color;
-                            add_to_cart_color = combo.custom.add_to_cart_color;
-
-
-
 
 
                           let data = ''
@@ -105,7 +101,7 @@ initJQuery(function () {
                             disccount_span.classList.add('discount-percent')
                            disccount_span.innerHTML = combo.discount_amount
                             discount_container.appendChild(disccount_span)
-                          const price_list =[]
+                           const price_list =[]
                                combo.products.forEach((product, index, arr)=>{
                                let image_frame = document.createElement("IMG")
                                image_frame.src = product.image_url
@@ -123,17 +119,22 @@ initJQuery(function () {
                               let span = document.createElement("SPAN")
                               span.classList.add('name-item')
                               span.innerHTML = data
+                              if(combo.custom)    {
+                                  let color_font = combo.custom.font_color;
+                            add_to_cart_color = combo.custom.add_to_cart_color;
                               span.style.color = color_font
+                              }
+
                               discount_container.appendChild(span)
 
 
-                              price_list.push(product.product_price)
+                              price_list.push([product.product_price,product.quantity])
                             })
                              let equal = document.createElement("SPAN")
                                equal.innerHTML = "="
                             discount_container.appendChild(equal)
                              price_list.forEach(item=>{
-                               sum += parseInt(item)
+                               sum += parseInt(item[0]) * parseInt(item[1])
                              })
 
 

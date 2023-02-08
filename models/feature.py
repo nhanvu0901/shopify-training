@@ -13,7 +13,7 @@ from xero_python.api_client.oauth2 import OAuth2Token
 from odoo import models, fields, api, _
 from odoo.exceptions import ValidationError
 from odoo.http import request
-
+from odoo.exceptions import ValidationError, AccessError
 from datetime import datetime
 import datetime as convertDate
 
@@ -33,97 +33,129 @@ class Fetch_order(models.Model):
     def shopify_fetch_order(self):
         min = datetime.strftime(self.min_time_order, "%Y-%m-%d")
         max = datetime.strftime(self.max_time_order, "%Y-%m-%d")
+        current_user = request.env.user
+        shopify_shop_exist = request.env['s.sp.shop'].sudo().search([('user', '=', current_user.id)], limit=1)
+        shop_app_exist = request.env['s.app'].sudo().search([('shop_url', '=', shopify_shop_exist.domain)], limit=1)
+        if shopify_shop_exist:
+            api_version = request.env['ir.config_parameter'].sudo().get_param('test_shopi.api_version')
 
-        order_shopify = shopify.Order.find(published_at_min=min, published_at_max=max, status='any')
-        list_product = []
-        list_product_id = []
-        for order in order_shopify:
+            new_session = shopify.Session(shopify_shop_exist.domain, api_version, token=shop_app_exist.sp_access_token)
+            shopify.ShopifyResource.activate_session(new_session)
 
-            for product in order.line_items:
-                product_exist = request.env['shop.product'].sudo().search([('product_id', '=', product.product_id)],
-                                                                          limit=1)
-                if product_exist:
-                    list_product.append(product_exist.id)
+            order_shopify = shopify.Order.find(published_at_min=min, published_at_max=max, status='any')
 
-            for i in list_product:
-                product = (4, i)  # link to an existing record
-                list_product_id.append(product)
+            list_product = []
+            list_product_id = []
+            for order in order_shopify:
 
-            customer = shopify.Order.find(order.id).customer
+                for product in order.line_items:
+                    product_exist = request.env['shop.product'].sudo().search([('product_id', '=', product.product_id)],
+                                                                              limit=1)
+                    if product_exist:
+                        list_product.append(product_exist.id)
 
-            order_exist = request.env['shop.orders'].sudo().search([('order_id', '=', order.id)], limit=1)
-            if order_exist:
-                request.env['shop.orders'].sudo().write({
-                    "customer_name": customer.first_name,
-                    "product_list": list_product_id,  # linnk the id of product_list to product id
-                    "order_id": order.id,
-                    "order_name": order.name,
-                    "created_at": order.created_at,
-                    "order_address": order.shipping_address.address1,
-                    "sum_money": order.total_price,
-                    "store_name": order.order_status_url[8:35],
-                    "financial_status": order.financial_status,
-                    "total_tax": order.total_tax
-                })
-            else:
-                request.env['shop.orders'].sudo().create({
-                    "customer_name": customer.first_name,
-                    "product_list": list_product_id,
-                    "order_id": order.id,
-                    "order_name": order.name,
-                    "created_at": order.created_at,
-                    "order_address": order.shipping_address.address1,
-                    "sum_money": order.total_price,
-                    "store_name": order.order_status_url[8:35],
-                    "financial_status": order.financial_status,
-                    "total_tax": order.total_tax
+                for i in list_product:
+                    product = (4, i)  # link to an existing record
+                    list_product_id.append(product)
 
-                })
+                customer = shopify.Order.find(order.id).customer
+
+                order_exist = request.env['shop.orders'].sudo().search([('order_id', '=', order.id)], limit=1)
+                if order_exist:
+                    request.env['shop.orders'].sudo().write({
+                        "customer_name": customer.first_name,
+                        "product_list": list_product_id,  # linnk the id of product_list to product id
+                        "order_id": order.id,
+                        "order_name": order.name,
+                        "created_at": order.created_at,
+                        "order_address": order.shipping_address.address1,
+                        "sum_money": order.total_price,
+                        "store_name": order.order_status_url[8:35],
+                        "financial_status": order.financial_status,
+                        "total_tax": order.total_tax
+                    })
+                else:
+                    request.env['shop.orders'].sudo().create({
+                        "customer_name": customer.first_name,
+                        "product_list": list_product_id,
+                        "order_id": order.id,
+                        "order_name": order.name,
+                        "created_at": order.created_at,
+                        "order_address": order.shipping_address.address1,
+                        "sum_money": order.total_price,
+                        "store_name": order.order_status_url.split("//")[1].split("/")[0],
+                        "financial_status": order.financial_status,
+                        "total_tax": order.total_tax
+
+                    })
+
+
+
+        else:
+            raise ValidationError(_("Account not have any shopify store,log to another acc"))
+
+
+
+
+
 
     def shopify_fetch_product(self):
         global varient_price,varient_quantity,varient_id,product_image
         min = datetime.strftime(self.min_time, "%Y-%m-%d")
         max = datetime.strftime(self.max_time, "%Y-%m-%d")
-        shop_url = request.env['ir.config_parameter'].sudo().get_param('test_shopi.shop_url')
-        data_shopify = shopify.Product.find(published_at_min=min, published_at_max=max)
+        #
 
-        for data in data_shopify:
-            if data:
+        current_user = request.env.user
+        shopify_shop_exist = request.env['s.sp.shop'].sudo().search([('user', '=', current_user.id)], limit=1)
+        shop_url =shopify_shop_exist.domain
+        shop_app_exist = request.env['s.app'].sudo().search([('shop_url', '=', shopify_shop_exist.domain)], limit=1)
+        if shopify_shop_exist:
+            api_version = request.env['ir.config_parameter'].sudo().get_param('test_shopi.api_version')
 
-                product_exist = request.env['shop.product'].sudo().search([('product_id', '=', data.get_id())], limit=1)
-                varient = shopify.Product.find(data.get_id()).variants
-                images = shopify.Product.find(data.get_id()).images
+            new_session = shopify.Session(shopify_shop_exist.domain, api_version, token=shop_app_exist.sp_access_token)
+            shopify.ShopifyResource.activate_session(new_session)
 
-                for i in varient:
-                    varient_price = i.price
-                    varient_quantity = i.inventory_quantity
-                    varient_id = i.id
-                for i in  images:
-                    product_image = i.src
-                if product_exist:
-                    request.env['shop.product'].sudo().write({
-                        "title": shopify.Product.find(data.get_id()).title,
-                        "created_at": shopify.Product.find(data.get_id()).created_at,
-                        "product_id": data.id,
-                        "product_price": varient_price,
-                        "store_name": shop_url,
-                        "handle":'https://'+shop_url+'/products/'+ shopify.Product.find(data.get_id()).handle,
-                        "quantity":varient_quantity,
-                        "product_image":product_image,
-                        "varient_id":varient_id
-                    })
-                else:
-                    request.env['shop.product'].sudo().create({
-                        "title": shopify.Product.find(data.get_id()).title,
-                        "created_at": shopify.Product.find(data.get_id()).created_at,
-                        "product_id": data.id,
-                        "product_price": varient_price,
-                        "store_name": shop_url,
-                         "handle":'https://'+shop_url+'/products/'+ shopify.Product.find(data.get_id()).handle,
-                        "quantity":varient_quantity,
-                        "product_image": product_image,
-                        "varient_id": varient_id
-                    })
+            data_shopify = shopify.Product.find(published_at_min=min, published_at_max=max)
+
+            for data in data_shopify:
+                if data:
+
+                    product_exist = request.env['shop.product'].sudo().search([('product_id', '=', data.get_id())], limit=1)
+                    varient = shopify.Product.find(data.get_id()).variants
+                    images = shopify.Product.find(data.get_id()).images
+
+                    for i in varient:
+                        varient_price = i.price
+                        varient_quantity = i.inventory_quantity
+                        varient_id = i.id
+                    for i in  images:
+                        product_image = i.src
+                    if product_exist:
+                        request.env['shop.product'].sudo().write({
+                            "title": shopify.Product.find(data.get_id()).title,
+                            "created_at": shopify.Product.find(data.get_id()).created_at,
+                            "product_id": data.id,
+                            "product_price": varient_price,
+                            "store_name": shop_url,
+                            "handle":'https://'+shop_url+'/products/'+ shopify.Product.find(data.get_id()).handle,
+                            "quantity":varient_quantity,
+                            "product_image":product_image,
+                            "varient_id":varient_id
+                        })
+                    else:
+                        request.env['shop.product'].sudo().create({
+                            "title": shopify.Product.find(data.get_id()).title,
+                            "created_at": shopify.Product.find(data.get_id()).created_at,
+                            "product_id": data.id,
+                            "product_price": varient_price,
+                            "store_name": shop_url,
+                             "handle":'https://'+shop_url+'/products/'+ shopify.Product.find(data.get_id()).handle,
+                            "quantity":varient_quantity,
+                            "product_image": product_image,
+                            "varient_id": varient_id
+                        })
+        else:
+            raise ValidationError(_("Account not have any shopify store,log to another acc"))
 
 
 class ShopOrderProduct(models.Model):
