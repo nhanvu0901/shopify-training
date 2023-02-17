@@ -132,7 +132,8 @@ initJQuery(function () {
                                     send:new_data,
                                     discount_amount:JSON.parse(JSON.parse(data.responseText).result).discount_amount,
                                     list_product_not_sale:new_list_product_not_sale,
-                                    discount:discount_money
+                                    discount:discount_money,
+                                    shop_url:window.shopUrl
                                 }
                                 function CheckOut() {
 

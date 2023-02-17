@@ -19,6 +19,7 @@ import werkzeug
 from odoo import http
 from odoo.http import request
 from datetime import datetime
+import time
 
 
 class TestShopi(http.Controller):
@@ -28,12 +29,12 @@ class TestShopi(http.Controller):
     def index(self, **kw):
         sp_api_key = request.env['ir.config_parameter'].sudo().get_param('test_shopi.sp_api_key')
         sp_api_secret_key = request.env['ir.config_parameter'].sudo().get_param('test_shopi.sp_api_secret_key')
-        shop_url = request.env['ir.config_parameter'].sudo().get_param('test_shopi.shop_url')
+        shop_url =kw['shop']
         api_version = request.env['ir.config_parameter'].sudo().get_param('test_shopi.api_version')
         redirect_url = request.env['ir.config_parameter'].sudo().get_param('test_shopi.redirect_url')
 
         shopify.Session.setup(api_key=sp_api_key, secret=sp_api_secret_key)
-        shop_url = shop_url
+
 
         state = binascii.b2a_hex(os.urandom(15)).decode("utf-8")
         redirect_uri = redirect_url
@@ -54,7 +55,7 @@ class TestShopi(http.Controller):
         sp_api_key = request.env['ir.config_parameter'].sudo().get_param('test_shopi.sp_api_key')
         sp_api_secret_key = request.env['ir.config_parameter'].sudo().get_param('test_shopi.sp_api_secret_key')
         api_version = request.env['ir.config_parameter'].sudo().get_param('test_shopi.api_version')
-        shop_url = request.env['ir.config_parameter'].sudo().get_param('test_shopi.shop_url')
+        shop_url = kw['shop']
 
         # session = shopify.Session(shop_url, api_version)
         # access_token = session.request_token(request.params)
@@ -78,7 +79,7 @@ class TestShopi(http.Controller):
         shopify_app_exist = request.env['s.app'].sudo().search([('sp_access_token', '=', access_token)], limit=1)
         if shopify_app_exist:
             shopify_app_exist.write({
-                "shop_url": domain,
+
                 "sp_api_key": sp_api_key,
                 "sp_api_secret_key": sp_api_secret_key,
                 "sp_api_version": api_version,
@@ -87,7 +88,7 @@ class TestShopi(http.Controller):
             })
         else:
             shopify_app_exist = shopify_app.create({
-                "shop_url": domain,
+
                 "sp_api_key": sp_api_key,
                 "sp_api_secret_key": sp_api_secret_key,
                 "sp_api_version": api_version,
@@ -98,8 +99,30 @@ class TestShopi(http.Controller):
         shopify_store = request.env['s.sp.shop']
 
         shopify_store_exist = request.env['s.sp.shop'].sudo().search([('domain', '=', shop_url)], limit=1)
+
+        letters = string.ascii_lowercase
+        password_generate = ''.join(random.choice(letters) for i in range(30))
+
         current_user = request.env['res.users'].sudo().search([('login', '=', kw['shop'])],
                                                               limit=1)
+        current_company = request.env['res.company'].sudo().search([('name', '=', kw['shop'])], limit=1)
+        if not current_user:
+            if not current_company:
+                currency_id = request.env['res.currency'].sudo().search(
+                    ['&', '|', ('active', '=', False), ('active', '=', True), ('name', '=', currency)], limit=1)
+                current_company = request.env['res.company'].sudo().create({
+                    'name': kw['shop'],
+                    'currency_id': currency_id.id
+                })
+
+                request.env['res.users'].sudo().create({
+                'name': kw['shop'],
+                'login': kw['shop'],
+                'password': password_generate,
+                'sp_shop_id': shop.id,
+                'company_id': current_company.id,
+                'company_ids': [(6, 0, [current_company.id])],
+            })
         if shopify_store_exist:
             shopify_store_exist.write(
                 {
@@ -124,6 +147,14 @@ class TestShopi(http.Controller):
                 "shop_id": shop.id
             })
 
+
+
+
+
+
+
+
+
         shop_app = request.env['s.sp.app']
         shop_app_exist = request.env['s.sp.app'].sudo().search([('token', '=', access_token)], limit=1)
 
@@ -139,34 +170,44 @@ class TestShopi(http.Controller):
                 "s_app_id": shopify_app_exist.id,
                 'token': access_token
             })
-        shop_app_exist.add_script_tag_to_shop()
-
-        # Cau4
-
-        letters = string.ascii_lowercase
-        password_generate = ''.join(random.choice(letters) for i in range(30))
-        current_user = request.env['res.users'].sudo().search([('login', '=', kw['shop'])],
-                                                              limit=1)
-        if not current_user:
-            current_company = request.env['res.company'].sudo().search([('name', '=', kw['shop'])], limit=1)
-            if not current_company:
-                currency_id = request.env['res.currency'].sudo().search(
-                    ['&', '|', ('active', '=', False), ('active', '=', True), ('name', '=', currency)], limit=1)
-                current_company = request.env['res.company'].sudo().create({
-                    'name': kw['shop'],
-                    'currency_id': currency_id.id
-                })
-
-            request.env['res.users'].sudo().create({
-                'name': kw['shop'],
-                'login': kw['shop'],
-                'password': password_generate,
-                'sp_shop_id': shop.id,
-                'company_id': current_company.id,
-                'company_ids': [(6, 0, [current_company.id])],
-            })
 
         web_base_url = request.env['ir.config_parameter'].sudo().get_param('web.base.url')
+        script_array = {
+            "store_end_combo_discount.js":web_base_url + "/test_shopi/static/" + "store_end_combo_discount.js" + "?v=" + str(time.time()),
+            "store_front_end_cart.js":web_base_url + "/test_shopi/static/" +"store_front_end_cart.js "+"?v=" + str(time.time())
+        }
+
+
+
+
+        new_session = shopify.Session(shop_url, api_version,
+                                      token=access_token)
+        shopify.ShopifyResource.activate_session(new_session)
+
+        #check script tag
+        scripTag = shopify.ScriptTag.find()
+
+        if not scripTag:
+          store_front_end_discount=  shopify.ScriptTag.create({
+                "event": "onload",
+                "src": web_base_url + "/test_shopi/static/" + "store_end_combo_discount.js" + "?v=" + str(time.time())
+            })
+          store_front_end_front_end = shopify.ScriptTag.create({
+                "event": "onload",
+                "src": web_base_url + "/test_shopi/static/" +"store_front_end_cart.js "+"?v=" + str(time.time())
+            })
+        else:
+
+           for key in script_array:
+               for script in scripTag:
+                   count = 0
+                   if key not in script.src:
+                      count += 1
+               if count ==2:
+                   scripTagCreate = shopify.ScriptTag.create({
+                     "event": "onload",
+                     "src": script_array[key]
+                    })
 
         redirectUrl = web_base_url + '/web?#menu_id=' + str(
             request.env.ref('test_shopi.shopify_config_settings_menu').id)  # id of the menuitem
@@ -233,6 +274,7 @@ class TestShopi(http.Controller):
                     obj = xmltodict.parse(accountXML)
                     json_string = json.dumps(obj)
                     valXeroModel['contact_id'] = json.loads(json_string).get('Response').get("Contacts").get("Contact")[0].get("ContactID")
+                    # valXeroModel['contact_id'] = "110b3252-d4f5-45db-aa53-3e6c8af63288"
                 xero_model_exist = request.env['xero.model'].sudo().search(
                     [('id_xero_account', '=', response.json()[0]['id'])],
                     limit=1)
@@ -259,7 +301,7 @@ class TestShopi(http.Controller):
     @http.route('/getdata',type='json', auth='none', cors='*', csrf=False, save_session=False)
     def get_store_front_end_data(self, **kwargs):
         if request.jsonrequest:
-            global shop_name
+            global shop_name, custom
             product_id = request.jsonrequest.get('product_id')
             product_handle = request.jsonrequest.get('product_handle')
             discount_combo = request.env['shopify.discount'].sudo().search([])
@@ -291,25 +333,36 @@ class TestShopi(http.Controller):
                       "font_color": discount_setting.font_color,
                       "add_to_cart_color": discount_setting.add_to_cart_color,
                       "position": discount_setting.position,
-
                   }
-
-
-
-               if(combo.discount_type == 'per'):
-                   combo_data={
-                       "discount_amount":str(combo.discount_amount)+"%",
-                       "products":list_product,
-                       "custom":custom
-                   }
-                   list_combo.append(combo_data)
+                  if (combo.discount_type == 'per'):
+                      combo_data = {
+                          "discount_amount": str(combo.discount_amount) + "%",
+                          "products": list_product,
+                          "custom": custom
+                      }
+                      list_combo.append(combo_data)
+                  else:
+                      combo_data = {
+                          "discount_amount": str(combo.discount_amount),
+                          "products": list_product,
+                          "custom": custom
+                      }
+                      list_combo.append(combo_data)
                else:
-                   combo_data={
-                       "discount_amount": str(combo.discount_amount),
-                       "products": list_product,
-                       "custom": custom
-                   }
-                   list_combo.append(combo_data)
+                   if (combo.discount_type == 'per'):
+                       combo_data = {
+                           "discount_amount": str(combo.discount_amount) + "%",
+                           "products": list_product,
+
+                       }
+                       list_combo.append(combo_data)
+                   else:
+                       combo_data = {
+                           "discount_amount": str(combo.discount_amount),
+                           "products": list_product,
+
+                       }
+                       list_combo.append(combo_data)
 
             return json.dumps(list_combo)
 
@@ -385,24 +438,22 @@ class TestShopi(http.Controller):
             else:
                 print("False")
 
-    def initShopifySession(self):
-        # sp_api_key = request.env['ir.config_parameter'].sudo().get_param('bought_together.sp_api_key')
-        # sp_api_secret_key = request.env['ir.config_parameter'].sudo().get_param('bought_together.sp_api_secret_key')
-        shop_url = request.env['ir.config_parameter'].sudo().get_param('test_shopi.shop_url')
-        api_version = request.env['ir.config_parameter'].sudo().get_param('test_shopi.api_version')
 
-        shopify_app_exist = request.env['s.app'].sudo().search([('shop_url', '=', shop_url)], limit=1)
-
-        new_session = shopify.Session(shop_url, api_version, token=shopify_app_exist.sp_access_token)
-        shopify.ShopifyResource.activate_session(new_session)
-        return new_session
     @http.route('/shopify/checkout',type='json', auth='none', cors='*', csrf=False, save_session=False)
     def shopify_checkout(self, **kwargs):
+        sp_api_secret_key = request.env['ir.config_parameter'].sudo().get_param('test_shopi.sp_api_secret_key')
+        api_version = request.env['ir.config_parameter'].sudo().get_param('test_shopi.api_version')
 
-        self.initShopifySession()
-
-        values = {}
         if(request.jsonrequest):
+
+            #TODO cho nay chua dung lam
+
+            shopify_app = request.env['s.app'].sudo().search([('sp_api_secret_key', '=', sp_api_secret_key)], limit=1)
+            shopify_app.initShopifySession(request.jsonrequest['shop_url'])
+            # shopify_session = shopify.Session(request.jsonrequest['shop_url'], api_version)
+            #
+            # shopify.ShopifyResource.activate_session(shopify_session)
+            values = {}
 
 
             if len(self.compare_combo(json.loads(request.jsonrequest.get("origin_data")).get("items"))) != 1:
@@ -487,43 +538,41 @@ class TestShopi(http.Controller):
         if request.jsonrequest:
             price_without_tax = request.jsonrequest.get('total_price')
             data = self.compare_combo(request.jsonrequest.get("items"))
-            if len(self.compare_combo(request.jsonrequest.get("items"))) != 0 :
-                spare =self.compare_combo(request.jsonrequest.get("items"))[1]
-            else:
-                spare = 1
-            flag = data[0]
-            if flag:
-
-                if (flag.discount_type == 'per'):
-                    percent = flag.discount_amount
-                    if spare != 1:
-                         price_off = price_without_tax * (percent / 100) *2
-                    else:
-                        price_off = price_without_tax * (percent / 100)
-                    sale_amount = str(flag.discount_amount) +"%"
+            if data != None:
+                if len(self.compare_combo(request.jsonrequest.get("items"))) != 1:
+                    spare = self.compare_combo(request.jsonrequest.get("items"))[1]
                 else:
-                    if spare != 1:
-                        price_off =  flag.discount_amount *2
+                    spare = 1
+                flag = data[0]
+                if flag:
+
+                    if (flag.discount_type == 'per'):
+                        percent = flag.discount_amount
+                        if spare != 1:
+                            price_off = price_without_tax * (percent / 100) * 2
+                        else:
+                            price_off = price_without_tax * (percent / 100)
+                        sale_amount = str(flag.discount_amount) + "%"
                     else:
-                        price_off = flag.discount_amount
-                    sale_amount = str(flag.discount_amount)
+                        if spare != 1:
+                            price_off = flag.discount_amount * 2
+                        else:
+                            price_off = flag.discount_amount
+                        sale_amount = str(flag.discount_amount)
 
-                discount_data_exist = request.env['shopify.discount.data']
-                test = discount_data_exist.create({
-                    "discount_id": flag.id,
-                    # "number_add_to_cart": 1,
-                    "sale": sale_amount,
-                    'date_create': datetime.now().strftime("%Y-%m-%d "),
-                    # "total_revenue": amount_total
-                    "price_off":price_off
+                    discount_data_exist = request.env['shopify.discount.data']
+                    test = discount_data_exist.create({
+                        "discount_id": flag.id,
+                        # "number_add_to_cart": 1,
+                        "sale": sale_amount,
+                        'date_create': datetime.now().strftime("%Y-%m-%d "),
+                        # "total_revenue": amount_total
+                        "price_off": price_off
 
-                })
-                print(test)
+                    })
+                    print(test)
 
-
-
-
-        return json.dumps("hello")
+            return json.dumps("hello")
 
 
     @http.route('/shopify/discount/chart', website =True, auth='public')

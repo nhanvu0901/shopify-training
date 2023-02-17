@@ -25,6 +25,7 @@
                         <field name="store_name"/>
                         <field name="financial_status"/>
                         <field name="total_tax"/>
+                    <field name="xero_sync_status"/>
                 </tree>
             </field>
         </record>

@@ -7,7 +7,7 @@
       <field name="model">s.app</field>
       <field name="arch" type="xml">
         <tree>
-             <field name="shop_url"/>
+
              <field name="sp_api_key"/>
              <field name="sp_api_secret_key"/>
              <field name="sp_api_version"/>

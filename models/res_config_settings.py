@@ -12,7 +12,7 @@ from odoo.http import request
 class ResConfigSettings(models.TransientModel):
     _inherit = 'res.config.settings'
 
-    shop_url = fields.Char(string='Shop URL', config_parameter="test_shopi.shop_url")
+
     api_version = fields.Char(string='Api version', config_parameter="test_shopi.api_version")
     redirect_url = fields.Char(string="Redirect URL", config_parameter="test_shopi.redirect_url")
     sp_api_key = fields.Char(string='API Key', config_parameter="test_shopi.sp_api_key")
@@ -30,15 +30,15 @@ class ResConfigSettings(models.TransientModel):
         src = self.cdn_tag
         shop_url = self.shop_url
         version = self.api_version
-        shop_app_url = request.env['s.sp.app'].sudo().search([('s_app_id.shop_url', '=', shop_url)], limit=1)
-
+        shop_app = request.env['s.app'].sudo().search([('sp_api_secret_key', '=', self.sp_api_secret_key)], limit=1)
+        shopify_shop_app = request.env['s.sp.app'].sudo().search([('s_app_id.id', '=', shop_app.id)], limit=1)
         new_session = shopify.Session(shop_url, version,
-                                      token=shop_app_url.token)
+                                      token=shopify_shop_app.token)
         shopify.ShopifyResource.activate_session(new_session)
 
         scripTag = shopify.ScriptTag.find()
         for script in scripTag:
-            if "store_front_end_cart.js" in script.src:
+            if "store_end_combo_discount.js" in script.src:
                 script.destroy()
         if src:
             scripTagCreate = shopify.ScriptTag.create({

@@ -14,9 +14,11 @@ class SUser(models.Model):
 class SApp(models.Model):
     _name = 's.app'
     _description = 'Shopify App'
-    _rec_name = "shop_url"
+    _rec_name = "sp_access_token"
 
-    shop_url = fields.Char(index=True)
+
+
+
     sp_api_key = fields.Char()
     sp_api_secret_key = fields.Char()
     sp_api_version = fields.Char()
@@ -24,6 +26,17 @@ class SApp(models.Model):
     # gg_api_client_id = fields.Char()
     # gg_api_client_secret = fields.Char()
     cdn_tag = fields.Char()
+
+    @api.model
+    def initShopifySession(self, shopUrl):
+        # sp_api_key = request.env['ir.config_parameter'].sudo().get_param('bought_together.sp_api_key')
+        # sp_api_secret_key = request.env['ir.config_parameter'].sudo().get_param('bought_together.sp_api_secret_key')
+
+        api_version = self.env['ir.config_parameter'].sudo().get_param('bought_together.api_version_bought_together')
+
+        new_session = shopify.Session(shopUrl, api_version, token=self.sp_access_token)
+        shopify.ShopifyResource.activate_session(new_session)
+        return new_session
 
 
 class Shopify(models.Model):
@@ -45,6 +58,8 @@ class Shopify(models.Model):
     setting = fields.Many2one('shopify.discount.settings',string='Setting')
     discount_combo = fields.One2many('shopify.discount','shopify_shop',string='Discount combo')
 
+
+
 class SSpApp(models.Model):
     _name = 's.sp.app'  # shop app
     _rec_name = 'sp_shop_id'
@@ -64,26 +79,26 @@ class SSpApp(models.Model):
     #     webhook.format = 'json'
     #     webhook.save()
 
-    def add_script_tag_to_shop(self):
-        src = self.s_app_id.cdn_tag
-        shop_url = self.s_app_id.shop_url
-        version = self.s_app_id.sp_api_version
-        shop_app_url = request.env['s.sp.app'].sudo().search([('s_app_id.shop_url', '=', shop_url)], limit=1)
-
-        new_session = shopify.Session(shop_url, version,
-                                      token=shop_app_url.token)
-        shopify.ShopifyResource.activate_session(new_session)
-
-        scripTag = shopify.ScriptTag.find()
-        for script in scripTag:
-            if "Test.js" in script.src:
-                script.destroy()
-        if src:
-            scripTagCreate = shopify.ScriptTag.create({
-                "event": "onload",
-                "src": src + "?v=" + str(time.time())
-            })
-            return scripTagCreate.id
+    # def add_script_tag_to_shop(self):
+    #     src = self.s_app_id.cdn_tag
+    #     shop_url = self.s_app_id.shop_url
+    #     version = self.s_app_id.sp_api_version
+    #     shop_app_url = request.env['s.sp.app'].sudo().search([('s_app_id.shop_url', '=', shop_url)], limit=1)
+    #
+    #     new_session = shopify.Session(shop_url, version,
+    #                                   token=shop_app_url.token)
+    #     shopify.ShopifyResource.activate_session(new_session)
+    #
+    #     scripTag = shopify.ScriptTag.find()
+    #     for script in scripTag:
+    #         if "Test.js" in script.src:
+    #             script.destroy()
+    #     if src:
+    #         scripTagCreate = shopify.ScriptTag.create({
+    #             "event": "onload",
+    #             "src": src + "?v=" + str(time.time())
+    #         })
+    #         return scripTagCreate.id
 
 
 

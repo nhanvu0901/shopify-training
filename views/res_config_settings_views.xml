@@ -16,11 +16,6 @@
                                     <span class="o_form_label">Shopify authentication</span>
 
 
-                                    <div >
-                                        <span>Shop URL </span>
-                                        <field name="shop_url"/>
-
-                                    </div>
 
                                     <div >
                                         <span>Api version</span>

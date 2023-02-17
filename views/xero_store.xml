@@ -43,10 +43,15 @@
                                 <group>
                                     <field name="orders">
                                         <tree create="false">
-                                            <field name="order_id"/>
-                                            <field name="order_name"/>
-                                            <field name="order_lines_data"/>
-                                        </tree>
+                                           <field name="Type"/>
+                                           <field name="InvoiceID"/>
+                                           <field name="AmountDue"/>
+                                          <field name="customer_name"/>
+                                          <field name="contact_name"/>
+                                          <field name="date_create"/>
+                                          <field name="contact_id"/>
+
+                                      </tree>
                                     </field>
                                 </group>
                             </page>
@@ -68,6 +73,20 @@
                 </form>
             </field>
         </record>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
  <menuitem name="Xero Fetch" id="xero_data_store_menu" parent="xero_main" action="xero_data_store_action"/>
 

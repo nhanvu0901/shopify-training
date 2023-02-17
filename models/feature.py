@@ -35,17 +35,24 @@ class Fetch_order(models.Model):
         max = datetime.strftime(self.max_time_order, "%Y-%m-%d")
         current_user = request.env.user
         shopify_shop_exist = request.env['s.sp.shop'].sudo().search([('user', '=', current_user.id)], limit=1)
-        shop_app_exist = request.env['s.app'].sudo().search([('shop_url', '=', shopify_shop_exist.domain)], limit=1)
+
+
+
+        #TODO
+        shop_app_exist =request.env['s.sp.app'].sudo().search([('sp_shop_id', '=', shopify_shop_exist.id)], limit=1)
+
+        list_quantity = []
         if shopify_shop_exist:
             api_version = request.env['ir.config_parameter'].sudo().get_param('test_shopi.api_version')
 
-            new_session = shopify.Session(shopify_shop_exist.domain, api_version, token=shop_app_exist.sp_access_token)
+            new_session = shopify.Session(shopify_shop_exist.domain, api_version, token=shop_app_exist.token)
             shopify.ShopifyResource.activate_session(new_session)
 
             order_shopify = shopify.Order.find(published_at_min=min, published_at_max=max, status='any')
 
             list_product = []
             list_product_id = []
+
             for order in order_shopify:
 
                 for product in order.line_items:
@@ -53,6 +60,12 @@ class Fetch_order(models.Model):
                                                                               limit=1)
                     if product_exist:
                         list_product.append(product_exist.id)
+
+                    temp = {"product_id": product_exist,
+                            'order_id_list': order.id,
+                            "quantity": product.attributes['quantity']}
+                    if temp not in list_quantity:
+                        list_quantity.append(temp)
 
                 for i in list_product:
                     product = (4, i)  # link to an existing record
@@ -62,7 +75,7 @@ class Fetch_order(models.Model):
 
                 order_exist = request.env['shop.orders'].sudo().search([('order_id', '=', order.id)], limit=1)
                 if order_exist:
-                    request.env['shop.orders'].sudo().write({
+                    order_exist.sudo().write({
                         "customer_name": customer.first_name,
                         "product_list": list_product_id,  # linnk the id of product_list to product id
                         "order_id": order.id,
@@ -70,12 +83,14 @@ class Fetch_order(models.Model):
                         "created_at": order.created_at,
                         "order_address": order.shipping_address.address1,
                         "sum_money": order.total_price,
-                        "store_name": order.order_status_url[8:35],
+                        "store_name": order.order_status_url.split("//")[1].split("/")[0],
                         "financial_status": order.financial_status,
-                        "total_tax": order.total_tax
+                        "total_tax": order.total_tax,
+                        "xero_sync_status": False
+
                     })
                 else:
-                    request.env['shop.orders'].sudo().create({
+                    order_exist=   request.env['shop.orders'].sudo().create({
                         "customer_name": customer.first_name,
                         "product_list": list_product_id,
                         "order_id": order.id,
@@ -85,9 +100,36 @@ class Fetch_order(models.Model):
                         "sum_money": order.total_price,
                         "store_name": order.order_status_url.split("//")[1].split("/")[0],
                         "financial_status": order.financial_status,
-                        "total_tax": order.total_tax
+                        "total_tax": order.total_tax,
+                        "xero_sync_status": False
 
                     })
+                    if list_quantity:
+                        for quantity in list_quantity:
+                            x = self.env["quantity.order.line"].sudo().search(
+                                [('product_id', "=", quantity['product_id'].id), ("order_id", '=', order_exist.id)])
+                            if x:
+                                # if x.quantity != quantity['quantity']:
+                                #     x.write({
+                                #         'quantity': quantity['quantity']
+                                #     })
+                                # else:
+                                #     print('quantity_order_line đã tồn tại!')
+                                x.write({
+                                    'quantity': quantity['quantity'],
+                                    'product_id': quantity['product_id'].id,
+                                    'order_id': order_exist.id,
+
+                                    })
+
+                            else:
+                                self.env["quantity.order.line"].sudo().create({
+                                    'quantity': quantity['quantity'],
+                                    'product_id': quantity['product_id'].id,
+                                    'order_id': order_exist.id,
+                                })
+
+
 
 
 
@@ -108,11 +150,11 @@ class Fetch_order(models.Model):
         current_user = request.env.user
         shopify_shop_exist = request.env['s.sp.shop'].sudo().search([('user', '=', current_user.id)], limit=1)
         shop_url =shopify_shop_exist.domain
-        shop_app_exist = request.env['s.app'].sudo().search([('shop_url', '=', shopify_shop_exist.domain)], limit=1)
+        shop_app_exist = request.env['s.sp.app'].sudo().search([('sp_shop_id', '=', shopify_shop_exist.id)], limit=1)
         if shopify_shop_exist:
             api_version = request.env['ir.config_parameter'].sudo().get_param('test_shopi.api_version')
 
-            new_session = shopify.Session(shopify_shop_exist.domain, api_version, token=shop_app_exist.sp_access_token)
+            new_session = shopify.Session(shopify_shop_exist.domain, api_version, token=shop_app_exist.token)
             shopify.ShopifyResource.activate_session(new_session)
 
             data_shopify = shopify.Product.find(published_at_min=min, published_at_max=max)
@@ -172,6 +214,19 @@ class ShopOrderProduct(models.Model):
     product_image = fields.Char("Image url")
     varient_id = fields.Char("Varient_id")
 
+    def get_list_bundle(self):
+        list_bundle = []
+        self.env.cr.execute("SELECT bundle_id FROM bundle_product_quantity WHERE product_id = %s" % self.id)
+        bundle_ids = self.env.cr.fetchall()
+        for id in bundle_ids:
+            list_bundle.append(id[0])
+        return list_bundle
+class QuantityOrderLine(models.Model):
+    _name = 'quantity.order.line'
+
+    product_id = fields.Many2one('shopify.product')
+    order_id = fields.Many2one('shopify.orders')
+    quantity = fields.Float()
 
 class ShopOrder(models.Model):
     _name = 'shop.orders'
@@ -186,69 +241,56 @@ class ShopOrder(models.Model):
     store_name = fields.Char("Store name")
     financial_status = fields.Char("Payment Status")
     total_tax = fields.Char("Total tax")
+    xero_sync_status =fields.Boolean('Active', default=False,readonly=True)
 
     # due_date = fields.Char("Due date")
+
+
     def sycn_order(self):
-        xero_model = request.env['xero.model'].sudo().search([('shopify_shop_url', '=', self.store_name)], limit=1)
-
-        line_items = []
-        for product in self.product_list:
-            price_product = int(product.product_price) + int(product.product_price) * 10 / 100
-
-            data = {
-                "Description": product.title,
-                "UnitAmount": str(price_product),
-
+        if self.xero_sync_status == False:
+            xero_model = request.env['xero.model'].sudo().search([('shopify_shop_url', '=', self.store_name)], limit=1)
+            quantity_order_line = request.env['quantity.order.line'].sudo().search([('order_id', '=', self.id)])
+            quantity_line =[]
+            headerAccount = {
+                "Authorization": "Bearer " + xero_model.xero_access_token,
+                "Content-Type": "application/json",
+                "Xero-tenant-id": xero_model.tenantId
             }
+            endpoint = "https://api.xero.com/api.xro/2.0/Invoices"
 
-            line_items.append(data)
+            line_items = []
+            table_record = request.env['table.sync.history'].sudo().search([('order_id', '=', self.order_id)], limit=1)
 
-        # if (self.financial_status == 'paid'):
-        invoice = {
-            "Type": "ACCREC",
-            "Contact": {
-                "ContactID": xero_model.contact_id
-            },
-            "InvoiceNumber": self.order_id,
-            "Date": self.created_at,
-            "Status": "DRAFT",
-
-            "LineItems": line_items}
-
-        headerAccount = {
-            "Authorization": "Bearer " + xero_model.xero_access_token,
-            "Content-Type": "application/json",
-            "Xero-tenant-id": xero_model.tenantId
-        }
-        endpoint = "https://api.xero.com/api.xro/2.0/Invoices"
-
-        responseData = requests.post(url=endpoint, headers=headerAccount, data=json.dumps(invoice))
-        print(responseData)
+            if self.financial_status == "paid" and table_record:# pending thanh paid da duoc sync
+                for list in table_record.list_history:
+                    if(list.changes == 'Paid'):
+                        raise ValidationError(_("Paid invoice has been sync"))
 
 
-        obj = xmltodict.parse(responseData.text)
-        if obj.get("Response").get("Invoices").get("Invoice").get("InvoiceID"):
-            invoice_id = obj.get("Response").get("Invoices").get("Invoice").get("InvoiceID")
-            if (self.financial_status == 'paid'):
+
 
                 payment_account = request.env['sales.account.code'].sudo().search([('shop_name', '=', self.store_name)],
-                                                                                    limit=1)
+                                                                                   limit=1)
+                invoice_id = table_record.invoice_id
                 if payment_account:
                     account_code = payment_account.code
 
-
                     line_itemsPost = []
-                    for product in self.product_list:
-                        price_product_post = int(product.product_price) + int(product.product_price) * 10 / 100
+                    for item in quantity_order_line:
+                        product_id = request.env['shop.product'].sudo().search(
+                            [('id', '=', item.product_id.ids[0])], limit=1)
+                        price_product = int(product_id.product_price) + int(product_id.product_price) * 10 / 100
 
                         data = {
-                            "Description": product.title,
-                            "UnitAmount": str(price_product_post),
-                            "AccountCode":account_code,
-                            "TaxType": "NONE"
-                        }
+                            "Description": product_id.title,
+                            "UnitAmount": str(price_product),
+                            "Quantity": str(item.quantity),
+                            "TaxType": "NONE",
+                            "AccountCode": account_code,
 
+                        }
                         line_itemsPost.append(data)
+
                     invoice = {
                         "Type": "ACCREC",
                         "Contact": {
@@ -257,84 +299,212 @@ class ShopOrder(models.Model):
                         "InvoiceNumber": self.order_id,
                         "Date": self.created_at,
                         "DueDate": self.created_at,
+                        "Reference": self.customer_name,
                         "Status": "AUTHORISED",
-                        "LineItems": line_itemsPost}
+                        "LineItems": line_itemsPost
+                    }
 
                     responseUpdate = requests.post(url=endpoint, headers=headerAccount, data=json.dumps(invoice))
                     print(responseUpdate)
 
-
                     payment_data = {
                         "Invoice": {"InvoiceID": invoice_id},
                         "Amount": self.sum_money,
-                        "Account": { "Code":account_code  },
+                        "Account": {"Code": account_code},
                     }
                     endpointPostData = "https://api.xero.com/api.xro/2.0/Payments"
                     reponsePayment = requests.post(url=endpointPostData, headers=headerAccount,
                                                    data=json.dumps(payment_data))
                     print(reponsePayment)
+                    if not reponsePayment.ok:
+                        raise ValidationError(_())
+                    self.history_record(invoice_id, table_record, xero_model)
+
                 else:
                     raise ValidationError(_("Choose the account for payment in the Xero fetch menu"))
 
-            #get the hisr=tory record
-            endpointHistory = "https://api.xero.com/api.xro/2.0/Invoices/"+invoice_id+"/History"
-            responseHistory = requests.get(url=endpointHistory, headers=headerAccount)
-            objHistory = xmltodict.parse(responseHistory.text)
-            history_record = objHistory.get("Response").get('HistoryRecords')
-            list_record = []
-            list_record_id = []
-            # ids = request.env['invoice.history.record'].search([]).ids
-            # record_set = self.env['invoice.history.record'].search([('id', 'in', ids)])
-            # record_set.unlink()
 
+
+
+            else:
+                for item in quantity_order_line:#tao invoice
+
+                        product_id = request.env['shop.product'].sudo().search([('id', '=', item.product_id.ids[0])], limit=1)
+                        price_product = int(product_id.product_price) + int(product_id.product_price) * 10 / 100
+
+                        data = {
+                            "Description": product_id.title,
+                            "UnitAmount": str(price_product),
+                            "Quantity": str(item.quantity)
+
+                        }
+
+                        line_items.append(data)
+
+                # if (self.financial_status == 'paid'):
+                invoice = {
+                    "Type": "ACCREC",
+                    "Contact": {
+                        "ContactID": xero_model.contact_id
+                    },
+                    "InvoiceNumber": self.order_id,
+                    "Date": self.created_at,
+                    "Status": "DRAFT",
+                    "Reference": self.customer_name,
+                    "LineItems": line_items}
+
+
+
+                responseData = requests.post(url=endpoint, headers=headerAccount, data=json.dumps(invoice))
+                print(responseData)
+                if responseData.ok:
+                    self.xero_sync_status = True
+
+                obj = xmltodict.parse(responseData.text)
+
+
+
+
+                if obj.get("Response").get("Invoices").get("Invoice").get("InvoiceID"):
+                    invoice_id = obj.get("Response").get("Invoices").get("Invoice").get("InvoiceID")
+
+                    if (self.financial_status == 'paid'):
+
+                        payment_account = request.env['sales.account.code'].sudo().search([('shop_name', '=', self.store_name)],
+                                                                                            limit=1)
+                        if payment_account:
+                            account_code = payment_account.code
+
+
+                            line_itemsPost = []
+                            for item in quantity_order_line:
+                                product_id = request.env['shop.product'].sudo().search(
+                                    [('id', '=', item.product_id.ids[0])], limit=1)
+                                price_product = int(product_id.product_price) + int(product_id.product_price) * 10 / 100
+
+                                data = {
+                                    "Description": product_id.title,
+                                    "UnitAmount": str(price_product),
+                                    "Quantity": str(item.quantity),
+                                    "TaxType": "NONE",
+                                    "AccountCode": account_code,
+
+                                }
+                                line_itemsPost.append(data)
+
+                            invoice = {
+                                "Type": "ACCREC",
+                                "Contact": {
+                                    "ContactID": xero_model.contact_id
+                                },
+                                "InvoiceNumber": self.order_id,
+                                "Date": self.created_at,
+                                "DueDate": self.created_at,
+                                "Reference":self.customer_name,
+                                "Status": "AUTHORISED",
+                                "LineItems": line_itemsPost
+                            }
+
+                            responseUpdate = requests.post(url=endpoint, headers=headerAccount, data=json.dumps(invoice))
+                            print(responseUpdate)
+
+
+                            payment_data = {
+                                "Invoice": {"InvoiceID": invoice_id},
+                                "Amount": self.sum_money,
+                                "Account": { "Code":account_code  },
+                            }
+                            endpointPostData = "https://api.xero.com/api.xro/2.0/Payments"
+                            reponsePayment = requests.post(url=endpointPostData, headers=headerAccount,
+                                                           data=json.dumps(payment_data))
+                            print(reponsePayment)
+                            if not reponsePayment.ok:
+                                raise ValidationError(_())
+
+                        else:
+                            raise ValidationError(_("Choose the account for payment in the Xero fetch menu"))
+                    self.history_record(invoice_id,table_record,xero_model)
+
+        else:
+
+            raise ValidationError(_("Alredy Sync"))
+
+    def history_record(self,invoice_id,table_record,xero_model):
+        # get the hisr=tory record
+        headerAccount = {
+            "Authorization": "Bearer " + xero_model.xero_access_token,
+            "Content-Type": "application/json",
+            "Xero-tenant-id": xero_model.tenantId
+        }
+        endpointHistory = "https://api.xero.com/api.xro/2.0/Invoices/" + invoice_id + "/History"
+        responseHistory = requests.get(url=endpointHistory, headers=headerAccount)
+        objHistory = xmltodict.parse(responseHistory.text)
+        history_record = objHistory.get("Response").get('HistoryRecords')
+        list_record = []
+        list_record_id = []
+        # ids = request.env['invoice.history.record'].search([]).ids
+        # record_set = self.env['invoice.history.record'].search([('id', 'in', ids)])
+        # record_set.unlink()
+
+        if type(history_record.get('HistoryRecord')) == dict:
+            if history_record.get('HistoryRecord').get("Changes") == 'Created':
+                history_record_table = request.env['invoice.history.record'].sudo().create({
+                    "changes": history_record.get('HistoryRecord').get('Changes'),
+                    'date_update': history_record.get('HistoryRecord').get('DateUTC'),
+                    'Details': history_record.get('HistoryRecord').get('Details'),
+
+                    'customer_name': self.customer_name
+                })
+                list_record.append(history_record_table.id)
+        elif type(history_record.get('HistoryRecord')) == list:
             for record in history_record.get('HistoryRecord'):
                 history_record_table = request.env['invoice.history.record'].sudo().create({
-                    "changes":record.get('Changes'),
-                    'date_update':record.get('DateUTC'),
-                    'Details':record.get('Details'),
-                    'record_id':convertDate.datetime.now().strftime('%Y%m%d%H%M%S%f'),
-                    'customer_name':self.customer_name
+                    "changes": record.get('Changes'),
+                    'date_update': record.get('DateUTC'),
+                    'Details': record.get('Details'),
+                    'record_id': convertDate.datetime.now().strftime('%Y%m%d%H%M%S%f'),
+                    'customer_name': self.customer_name
                 })
                 list_record.append(history_record_table.id)
 
-            ids = request.env['invoice.history.record'].search([]).ids
-            for i in ids:
-                    for j in list_record:
-                        if(j == i):
-                            record = (4, j)  # link to an existing record
-                            list_record_id.append(record)
+        ids = request.env['invoice.history.record'].search([]).ids
+        for i in ids:
+            for j in list_record:
+                if (j == i):
+                    record = (4, j)  # link to an existing record
+                    list_record_id.append(record)
 
-            # for i in ids:
-            #     for j in list_record:
-            #         if j == i:
-            #             record = (4, i)
-            #             list_record_id.append(record)
+        # for i in ids:
+        #     for j in list_record:
+        #         if j == i:
+        #             record = (4, i)
+        #             list_record_id.append(record)
 
-
-            table_record = request.env['table.sync.history'].sudo().search([('invoice_id', '=', invoice_id)], limit=1)
-            if table_record:
-              table_record.list_history.unlink()
-              table=  table_record.write({
-                    "invoice_id": invoice_id,
-                    "order_id": self.order_id,
-                    "total_money": self.sum_money,
-                    "order_name": self.order_name,
-                    "list_history":list_record_id
-                })
-            else:
-                table_record.create({
-                    "invoice_id": invoice_id,
-                    "order_id": self.order_id,
-                    "total_money": self.sum_money,
-                    "order_name": self.order_name,
-                    "list_history": list_record_id
-                })
+        if table_record:
+            table_record.list_history.unlink()
+            table = table_record.write({
+                "invoice_id": invoice_id,
+                "order_id": self.order_id,
+                "total_money": self.sum_money,
+                "order_name": self.order_name,
+                "list_history": list_record_id
+            })
+        else:
+            table_record.create({
+                "invoice_id": invoice_id,
+                "order_id": self.order_id,
+                "total_money": self.sum_money,
+                "order_name": self.order_name,
+                "list_history": list_record_id
+            })
 
 
+class QuantityOrderLine(models.Model):
+    _name = 'quantity.order.line'
 
-
-
-
+    product_id = fields.Many2one('shopify.product')
+    order_id = fields.Many2one('shopify.order')
+    quantity = fields.Float()
 
 
 

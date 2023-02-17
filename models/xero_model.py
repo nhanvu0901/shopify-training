@@ -79,16 +79,13 @@ class ShopifyShopXero(models.Model):
             enpoint = 'https://api.xero.com/api.xro/2.0/Accounts'
             headerAccount = {
                 "Authorization": "Bearer " + access_token,
-                "Content-Type": "application/json",
+                "Accept": "application/json",
                 "Xero-tenant-id": tenantId
             }
             responseAccount = requests.get(enpoint, headers=headerAccount)
 
-            accountXML = responseAccount.text
-            obj = xmltodict.parse(accountXML)
 
-            json_string = json.dumps(obj)
-            accounts = json.loads(json_string).get('Response').get('Accounts').get("Account")
+            accounts = json.loads(responseAccount.text).get('Accounts')
 
             for account in accounts:
                 if account.get("Type") == 'SAlES' or account.get("Type") == 'REVENUE':
@@ -135,24 +132,29 @@ class ShopifyShopXero(models.Model):
                             'account_id': account.get("AccountID")
                         })
         else:
-            return None
-    def initShopifySession(self):
-        # sp_api_key = request.env['ir.config_parameter'].sudo().get_param('bought_together.sp_api_key')
-        # sp_api_secret_key = request.env['ir.config_parameter'].sudo().get_param('bought_together.sp_api_secret_key')
-        shop_url = request.env['ir.config_parameter'].sudo().get_param('test_shopi.shop_url')
-        api_version = request.env['ir.config_parameter'].sudo().get_param('test_shopi.api_version')
-
-        shopify_app_exist = request.env['s.app'].sudo().search([('shop_url', '=', shop_url)], limit=1)
-
-        new_session = shopify.Session(shop_url, api_version, token=shopify_app_exist.sp_access_token)
-        shopify.ShopifyResource.activate_session(new_session)
-        return new_session
+            raise ValidationError(_("Choose the shop to fetch"))
+    # def initShopifySession(self):
+    #     # sp_api_key = request.env['ir.config_parameter'].sudo().get_param('bought_together.sp_api_key')
+    #     # sp_api_secret_key = request.env['ir.config_parameter'].sudo().get_param('bought_together.sp_api_secret_key')
+    #     shop_url = request.env['ir.config_parameter'].sudo().get_param('test_shopi.shop_url')
+    #     api_version = request.env['ir.config_parameter'].sudo().get_param('test_shopi.api_version')
+    #
+    #     shopify_app_exist = request.env['s.app'].sudo().search([('shop_url', '=', shop_url)], limit=1)
+    #
+    #     new_session = shopify.Session(shop_url, api_version, token=shopify_app_exist.sp_access_token)
+    #     shopify.ShopifyResource.activate_session(new_session)
+    #     return new_session
     def fetch_product(self):
-        self.initShopifySession()
+        sp_api_secret_key = request.env['ir.config_parameter'].sudo().get_param('test_shopi.sp_api_secret_key')
+        shop_app_exist = request.env['s.app'].sudo().search([('sp_api_secret_key', '=', sp_api_secret_key)], limit=1)
+
+        shop_app_exist.initShopifySession(self.shop_name)
+
         min = datetime.strftime(self.date_start, "%Y-%m-%d")
         max = datetime.strftime(self.date_end, "%Y-%m-%d")
-        shop_url = request.env['ir.config_parameter'].sudo().get_param('test_shopi.shop_url')
+
         data_shopify = shopify.Product.find(published_at_min=min, published_at_max=max)
+
         for data in data_shopify:
             if data:
                 print(data.id)
@@ -193,14 +195,60 @@ class ShopifyShopXero(models.Model):
             raise ValidationError(_("Choose the shop to fetch"))
 
     def fetch_order(self):
-        print("Hello")
+       if self.shop_name.domain and self.date_end and self.date_start:
+           shopify_xero_order = request.env['shopify.xero.orders'].search([])
+           if self.orders:
+               shopify_xero_order.unlink()
+
+           xero_model = request.env['xero.model'].sudo().search([('shopify_shop_url', '=', self.shop_name.domain)],
+                                                                limit=1)
+           header = {
+               "Authorization": "Bearer " + xero_model.xero_access_token,
+               "Accept": "application/json",
+               "Xero-Tenant-Id": xero_model.tenantId,
+
+           }
+
+           enpoint = "https://api.xero.com/api.xro/2.0/Invoices"
+           min = datetime.strftime(self.date_start, "%Y,%m,%d")
+           max = datetime.strftime(self.date_end, "%Y,%m,%d")
+           param = {"where" :"Date >=DateTime("+min+")"+" && Date<DateTime(" +max+")",
+
+                    }
+           response = requests.get(enpoint, headers=header,params=param)
+
+           # Type = fields.Char()
+           # InvoiceID = fields.Char()
+           # AmountDue = fields.Char()
+           # customer_name = fields.Char(string="Customer name")
+           # shop_owner_name = fields.Char(string="Shop Owner Name")
+           # date_create = fields.Char()
+
+           for invoice in json.loads(response.content).get('Invoices'):
+               shopify_xero_order.create({
+                   "Type":invoice.get('Type'),
+                   "InvoiceID": invoice.get('InvoiceID'),
+                   "AmountDue": invoice.get('AmountDue'),
+                   "customer_name": invoice.get('Reference'),
+                   "contact_name": invoice.get('Contact').get('Name'),
+                   "date_create": invoice.get('DateString'),
+                   "shop_xero_id":self.id
+               })
+
+
+       else:
+              raise ValidationError(_("Choose the shop to fetch"))
+
 
     def _display_redirect_xero(self):
 
         client_id = request.env['ir.config_parameter'].sudo().get_param('test_shopi.client_id')
         redirectURLXero = request.env['ir.config_parameter'].sudo().get_param('test_shopi.redirect_url_xero')
-        shop_url = request.env['ir.config_parameter'].sudo().get_param('test_shopi.shop_url')
-        redirectUrl = "https://login.xero.com/identity/connect/authorize?response_type=code&client_id=" + client_id + "&redirect_uri=" + redirectURLXero + "&scope=openid%20profile%20email%20accounting.transactions&state=" + shop_url
+        sp_api_secret_key = request.env['ir.config_parameter'].sudo().get_param('test_shopi.sp_api_secret_key')
+
+        shopify_app = request.env['s.app'].sudo().search([('sp_api_secret_key', '=', sp_api_secret_key)], limit=1)
+        shop_app =  request.env['s.sp.app'].sudo().search([('s_app_id.id', '=', shopify_app.id)], limit=1)
+        redirectUrl = "https://login.xero.com/identity/connect/authorize?response_type=code&client_id=" + client_id + "&redirect_uri=" + redirectURLXero + "&scope=openid%20profile%20email%20accounting.transactions%20accounting.contacts%20accounting.settings%20offline_access&state=" +shop_app.sp_shop_id.domain
         return {
             'type': 'ir.actions.act_url',
             'target': 'self',
@@ -211,7 +259,7 @@ class ShopifyShopXero(models.Model):
         client_id = request.env['ir.config_parameter'].sudo().get_param('test_shopi.client_id')
         redirectURLXero = request.env['ir.config_parameter'].sudo().get_param('test_shopi.redirect_url_xero')
         shop_url = request.env['ir.config_parameter'].sudo().get_param('test_shopi.shop_url')
-        redirectUrl = "https://login.xero.com/identity/connect/authorize?response_type=code&client_id=" + client_id + "&redirect_uri=" + redirectURLXero + "&scope=openid%20profile%20email%20accounting.transactions&state=" + shop_url
+        redirectUrl = "https://login.xero.com/identity/connect/authorize?response_type=code&client_id=" + client_id + "&redirect_uri=" + redirectURLXero + "&scope=openid%20profile%20email%20accounting.transactions%20offline_access&state=" + shop_url
         return {
             'type': 'ir.actions.act_url',
             'target': 'self',
@@ -242,12 +290,18 @@ class ShopifyShopXeroProducts(models.Model):
 
 class ShopifyShopXeroOrders(models.Model):
     _name = 'shopify.xero.orders'
-    _rec_name = 'order_name'
 
-    order_id = fields.Char()
-    order_name = fields.Char()
-    order_lines_data = fields.Char()
     shop_xero_id = fields.Many2one('shopify.shop.xero')
+    Type = fields.Char()
+    InvoiceID = fields.Char()
+    AmountDue = fields.Char()
+    customer_name = fields.Char(string="Customer name")
+    contact_name = fields.Char(string="Contact Name")
+    contact_id = fields.Char()
+    date_create = fields.Char()
+
+
+
 
 
 class ShopifyShopXeroFetchHistory(models.Model):
